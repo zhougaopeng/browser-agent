@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
-    "format": "biome format --fix ."
+    "format": "biome format --fix .",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=22.13.0"
@@ -34,6 +35,15 @@
     "zod": "^4.3.6",
     "zustand": "^5.0.0"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "biome check --fix --no-errors-on-unmatched",
+      "biome format --fix --no-errors-on-unmatched"
+    ],
+    "*.{json,css}": [
+      "biome format --fix --no-errors-on-unmatched"
+    ]
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.9",
     "@types/node": "^22.0.0",
@@ -44,6 +54,8 @@
     "electron": "^35.0.0",
     "electron-builder": "^26.0.0",
     "electron-vite": "^3.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.0",
