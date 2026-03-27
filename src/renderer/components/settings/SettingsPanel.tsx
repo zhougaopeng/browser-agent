@@ -1,0 +1,42 @@
+import { useSettingsStore } from "../../stores/settings";
+import { BrowserConfig } from "./BrowserConfig";
+import { ModelConfig } from "./ModelConfig";
+
+export function SettingsPanel() {
+  const { settings, loading } = useSettingsStore();
+
+  if (loading || !settings) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-gray-400">
+        加载设置...
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-lg px-6 py-6">
+        <h1 className="mb-6 text-lg font-semibold text-gray-800">设置</h1>
+        <div className="flex flex-col gap-8">
+          <ModelConfig settings={settings} />
+          <BrowserConfig settings={settings} />
+
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-gray-700">Skills 配置</h2>
+            <label className="block">
+              <span className="mb-1 block text-xs text-gray-500">Skills 根目录</span>
+              <input
+                type="text"
+                value={settings.skills.directory}
+                onChange={(e) =>
+                  useSettingsStore.getState().updateSetting("skills.directory", e.target.value)
+                }
+                className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+              />
+            </label>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

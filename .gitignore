@@ -1,0 +1,20 @@
+node_modules/
+out/
+dist/
+*.db
+*.db-journal
+.traces/
+.playwright-profile/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# env
+.env
+.env.local
