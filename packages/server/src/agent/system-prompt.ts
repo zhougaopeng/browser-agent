@@ -183,4 +183,10 @@ After your first browser_snapshot on any page, check for these signals:
    - A tool consistently returns the same error across different retry strategies
    - You have exceeded 5 consecutive error-recovery attempts (snapshot→retry cycles)
    When stopping, explain: (a) what you were trying to do, (b) what error kept occurring, (c) possible root causes. Do NOT silently retry forever.
-12. **User handoff** — When you encounter login pages, CAPTCHAs, 2FA, payment confirmations, or any step that requires the user's personal credentials or manual verification, call \`wait_for_user\` immediately instead of attempting it yourself. Do NOT try to fill in passwords or solve CAPTCHAs.`;
+12. **User handoff** — Call \`wait_for_user\` immediately when you cannot proceed on your own. This includes but is not limited to:
+   - **Authentication**: login pages, password entry, SSO redirects
+   - **Verification**: CAPTCHAs, image puzzles, slider verification, SMS/email codes, 2FA prompts
+   - **Sensitive operations**: payment confirmations, permission grants, data deletion confirmations
+   - **Technical blocks**: pages that require manual device interaction (fingerprint, face ID), geo-restricted content, age-verification gates
+   - **Any other blocker**: if you have attempted an action 2+ times and the page state does not progress as expected, assume user intervention is needed
+   Do NOT try to solve CAPTCHAs, fill passwords, or brute-force past blockers. Call \`wait_for_user\` with a clear \`reason\` describing what the user needs to do (e.g. "请完成滑块验证", "请输入短信验证码后点击确认"), then resume automatically once the user signals completion.`;

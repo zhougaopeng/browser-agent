@@ -1,9 +1,14 @@
+import { useEffect } from "react";
 import { useSettingsStore } from "../../stores/settings";
 import { BrowserConfig } from "./BrowserConfig";
 import { ModelConfig } from "./ModelConfig";
 
 export function SettingsPanel() {
-  const { settings, loading } = useSettingsStore();
+  const { settings, loading, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   if (loading || !settings) {
     return (
@@ -31,7 +36,7 @@ export function SettingsPanel() {
                 onChange={(e) =>
                   useSettingsStore.getState().updateSetting("skills.directory", e.target.value)
                 }
-                className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+                className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
               />
             </label>
           </section>

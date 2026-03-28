@@ -43,7 +43,7 @@ export function ActionCard({ invocation }: ActionCardProps) {
   return (
     <div
       className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs ${
-        done ? "border-gray-200 bg-gray-50/50" : "border-blue-200 bg-blue-50/50"
+        done ? "border-border bg-pill-bg/50" : "border-blue-200 bg-blue-50/50"
       }`}
     >
       <span className="shrink-0">

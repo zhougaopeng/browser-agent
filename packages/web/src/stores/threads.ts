@@ -10,14 +10,20 @@ export interface Thread {
   metadata?: Record<string, unknown>;
 }
 
+const PAGE_SIZE = 20;
+
 interface ThreadsState {
   threads: Thread[];
   activeThreadId: string | null;
   pendingChatId: string | null;
   pendingMessage: string | null;
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  page: number;
 
   fetchThreads: () => Promise<void>;
+  fetchMoreThreads: () => Promise<void>;
   goHome: () => void;
   startChatWithMessage: (message: string) => void;
   setActiveThread: (id: string) => void;
@@ -33,14 +39,40 @@ export const useThreadsStore = create<ThreadsState>((set, get) => ({
   pendingChatId: null,
   pendingMessage: null,
   loading: false,
+  loadingMore: false,
+  hasMore: true,
+  page: 1,
 
   fetchThreads: async () => {
     set({ loading: true });
     try {
-      const threads = (await api.threads.list()) as Thread[];
-      set({ threads, loading: false });
+      const result = await api.threads.list({ page: 1, limit: PAGE_SIZE });
+      set({
+        threads: result.threads as Thread[],
+        hasMore: result.hasMore,
+        page: 1,
+        loading: false,
+      });
     } catch {
       set({ loading: false });
+    }
+  },
+
+  fetchMoreThreads: async () => {
+    const { loadingMore, hasMore, page } = get();
+    if (loadingMore || !hasMore) return;
+    set({ loadingMore: true });
+    try {
+      const nextPage = page + 1;
+      const result = await api.threads.list({ page: nextPage, limit: PAGE_SIZE });
+      set((state) => ({
+        threads: [...state.threads, ...(result.threads as Thread[])],
+        hasMore: result.hasMore,
+        page: nextPage,
+        loadingMore: false,
+      }));
+    } catch {
+      set({ loadingMore: false });
     }
   },
 

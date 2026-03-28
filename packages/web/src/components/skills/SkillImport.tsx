@@ -17,7 +17,7 @@ export function SkillImport({ onBack }: SkillImportProps) {
         <h1 className="mb-6 text-lg font-semibold text-gray-800">导入 Skill</h1>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center transition-colors hover:border-accent/40">
+          <div className="rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-accent/40">
             <p className="text-2xl">📁</p>
             <p className="mt-2 text-sm text-gray-500">拖放 Skill 目录到此处</p>
             <p className="mt-1 text-xs text-gray-400">目录中需包含 SKILL.md 文件</p>
@@ -31,7 +31,7 @@ export function SkillImport({ onBack }: SkillImportProps) {
               <input
                 type="text"
                 placeholder="/path/to/skill-directory"
-                className="flex-1 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+                className="flex-1 rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
               />
               <button
                 type="button"

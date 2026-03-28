@@ -100,7 +100,7 @@ export function ChatPanel() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex max-w-2xl flex-col gap-3">
+          <div className="mx-auto flex max-w-3xl flex-col gap-3">
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}

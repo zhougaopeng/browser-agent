@@ -35,13 +35,13 @@ export function InputBar({
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3">
+    <div className="border-t border-border bg-home-bg px-5 py-3.5">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (!isLoading && input.trim()) onSubmit();
         }}
-        className="flex items-end gap-2"
+        className="mx-auto flex max-w-3xl items-end gap-2.5"
       >
         <textarea
           ref={textareaRef}
@@ -49,16 +49,16 @@ export function InputBar({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="描述你想完成的操作..."
-          rows={1}
+          rows={2}
           disabled={disabled}
-          className="flex-1 resize-none rounded-xl border border-gray-200 bg-surface px-3.5 py-2 text-sm leading-relaxed text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-accent/40 disabled:opacity-50"
+          className="flex-1 resize-none rounded-xl border border-home-input-border bg-home-input-bg px-4 py-3 text-base leading-relaxed text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-accent/40 disabled:opacity-50"
         />
 
         {isLoading ? (
           <button
             type="button"
             onClick={onStop}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pill-bg text-gray-500 transition-colors hover:bg-pill-hover"
             title="停止"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-label="停止">
@@ -69,7 +69,7 @@ export function InputBar({
           <button
             type="submit"
             disabled={disabled || !input.trim()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-colors hover:bg-accent-hover disabled:opacity-40"
             title="发送"
           >
             <svg

@@ -17,6 +17,8 @@ export async function handleSettingsRoute(
     const { key, value } = JSON.parse(body) as { key: string; value: unknown };
     (app.settingsStore as unknown as { set: (k: string, v: unknown) => void }).set(key, value);
 
+    await app.rebuild();
+
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(app.settingsStore.store));
     return;

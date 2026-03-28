@@ -15,8 +15,7 @@ export function BrowserConfig({ settings }: BrowserConfigProps) {
   const handleHeadlessToggle = async () => {
     setSwitching(true);
     await update("browser.headless", !settings.browser.headless);
-    // settings:changed 回调会更新 store，届时 switching 状态自动结束
-    setTimeout(() => setSwitching(false), 3000);
+    setSwitching(false);
   };
 
   return (
@@ -53,7 +52,7 @@ export function BrowserConfig({ settings }: BrowserConfigProps) {
           <select
             value={settings.browser.browser}
             onChange={(e) => update("browser.browser", e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           >
             {BROWSERS.map((b) => (
               <option key={b} value={b}>
@@ -71,7 +70,7 @@ export function BrowserConfig({ settings }: BrowserConfigProps) {
             value={settings.browser.executablePath ?? ""}
             onChange={(e) => update("browser.executablePath", e.target.value || undefined)}
             placeholder="自动检测"
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           />
         </label>
 
@@ -83,7 +82,7 @@ export function BrowserConfig({ settings }: BrowserConfigProps) {
             value={settings.browser.userDataDir ?? ""}
             onChange={(e) => update("browser.userDataDir", e.target.value || undefined)}
             placeholder="默认 profile"
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           />
         </label>
       </div>

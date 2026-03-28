@@ -15,20 +15,15 @@ export function createHttpAdapter(): ApiAdapter {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key, value }),
         }).then(() => {}),
-      onChanged: (cb) => {
-        const timer = setInterval(async () => {
-          try {
-            const s = (await fetch(`${BASE}/settings`).then((r) => r.json())) as AppSettings;
-            cb(s);
-          } catch {
-            // server might not be running
-          }
-        }, 3000);
-        return () => clearInterval(timer);
-      },
     },
     threads: {
-      list: () => fetch(`${BASE}/threads`).then((r) => r.json()),
+      list: (params) => {
+        const qs = new URLSearchParams();
+        if (params?.page) qs.set("page", String(params.page));
+        if (params?.limit) qs.set("limit", String(params.limit));
+        const q = qs.toString();
+        return fetch(`${BASE}/threads${q ? `?${q}` : ""}`).then((r) => r.json());
+      },
       delete: (id) => fetch(`${BASE}/threads/${id}`, { method: "DELETE" }).then(() => {}),
       rename: (id, title) =>
         fetch(`${BASE}/threads/${id}`, {

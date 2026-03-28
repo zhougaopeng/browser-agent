@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { View } from "../../App";
 import { type Thread, useThreadsStore } from "../../stores/threads";
 
@@ -15,14 +15,32 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
   const setActiveThread = useThreadsStore((s) => s.setActiveThread);
   const deleteThread = useThreadsStore((s) => s.deleteThread);
   const renameThread = useThreadsStore((s) => s.renameThread);
+  const fetchThreads = useThreadsStore((s) => s.fetchThreads);
+  const fetchMoreThreads = useThreadsStore((s) => s.fetchMoreThreads);
+  const loadingMore = useThreadsStore((s) => s.loadingMore);
+  const hasMore = useThreadsStore((s) => s.hasMore);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchThreads();
+  }, [fetchThreads]);
 
   useEffect(() => {
     if (editingId) editRef.current?.select();
   }, [editingId]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || loadingMore || !hasMore) return;
+    const threshold = 40;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < threshold) {
+      fetchMoreThreads();
+    }
+  }, [fetchMoreThreads, loadingMore, hasMore]);
 
   const isHome = !activeThreadId && !pendingChatId;
 
@@ -49,7 +67,7 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
   };
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-gray-200 bg-sidebar">
+    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
       {/* Top: New chat */}
       <div className="px-3 pt-2 pb-1">
         <button
@@ -57,8 +75,8 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
           onClick={handleGoHome}
           className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
             view === "chat" && isHome
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-600 hover:bg-white/60"
+              ? "bg-home-bg text-gray-900 shadow-sm"
+              : "text-gray-600 hover:bg-home-bg/60"
           }`}
         >
           <svg
@@ -84,8 +102,8 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
           onClick={() => onNavigate("settings")}
           className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
             view === "settings"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-600 hover:bg-white/60"
+              ? "bg-home-bg text-gray-900 shadow-sm"
+              : "text-gray-600 hover:bg-home-bg/60"
           }`}
         >
           <svg
@@ -107,8 +125,8 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
           onClick={() => onNavigate("skills")}
           className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
             view === "skills"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-600 hover:bg-white/60"
+              ? "bg-home-bg text-gray-900 shadow-sm"
+              : "text-gray-600 hover:bg-home-bg/60"
           }`}
         >
           <svg
@@ -131,7 +149,7 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Divider */}
-      <div className="mx-3 my-1.5 border-t border-gray-200" />
+      <div className="mx-3 my-1.5 border-t border-border" />
 
       {/* Recent conversations */}
       <div className="px-3 py-1">
@@ -139,7 +157,7 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
           最近对话
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-2 pb-2">
         {threads.length === 0 ? (
           <p className="px-2.5 py-2 text-xs text-gray-400">暂无对话记录</p>
         ) : (
@@ -150,8 +168,8 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
               onClick={() => handleSelectThread(thread.id)}
               className={`group relative flex w-full cursor-pointer items-center rounded-lg px-2.5 py-1.5 text-left transition-colors ${
                 view === "chat" && activeThreadId === thread.id
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:bg-white/60"
+                  ? "bg-home-bg text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:bg-home-bg/60"
               }`}
             >
               {editingId === thread.id ? (
@@ -226,6 +244,7 @@ export function Sidebar({ view, onNavigate }: SidebarProps) {
             </button>
           ))
         )}
+        {loadingMore && <p className="px-2.5 py-2 text-center text-xs text-gray-400">加载中…</p>}
       </div>
     </aside>
   );

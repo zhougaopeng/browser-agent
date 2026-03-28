@@ -4,9 +4,12 @@ import { z } from "zod";
 export const waitForUserTool = createTool({
   id: "wait_for_user",
   description:
-    "Pause automation and wait for user to complete an action in the browser " +
-    "(login, CAPTCHA, 2FA, file upload, etc.). The user will see a green " +
-    "visual indicator on the Chrome window and can resume by sending a message.",
+    "Pause automation and wait for user to complete an action in the browser. " +
+    "Use whenever the agent cannot proceed on its own — login, CAPTCHA, " +
+    "slider verification, SMS/email code, 2FA, payment confirmation, " +
+    "permission grant, or any other blocker that requires manual user " +
+    "intervention. The user will see a visual indicator and can resume " +
+    "by sending a message.",
   inputSchema: z.object({
     reason: z.string().describe('Brief explanation shown to user, e.g. "请完成登录操作"'),
   }),

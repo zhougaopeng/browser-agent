@@ -24,8 +24,8 @@ export function SkillEditor({ skill, onBack }: SkillEditorProps) {
         <h1 className="mb-1 text-lg font-semibold text-gray-800">{skill.name}</h1>
         <p className="mb-6 text-xs text-gray-400">{skill.description}</p>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50">
-          <div className="border-b border-gray-200 px-4 py-2">
+        <div className="rounded-lg border border-border bg-pill-bg">
+          <div className="border-b border-border px-4 py-2">
             <span className="text-xs font-medium text-gray-500">SKILL.md</span>
           </div>
           <textarea

@@ -14,16 +14,26 @@ export async function handleThreadsRoute(
     const memoryStore = await app.mastra.getStorage()?.getStore("memory");
     if (!memoryStore) {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end("[]");
+      res.end(JSON.stringify({ threads: [], hasMore: false }));
       return;
     }
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 20, 1), 100);
+    const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
+
     const result = await memoryStore.listThreads({
       filter: { resourceId: app.getResourceId() },
       orderBy: { field: "updatedAt", direction: "DESC" },
-      perPage: false,
+      perPage: limit,
+      page,
     });
+
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(result.threads));
+    res.end(
+      JSON.stringify({
+        threads: result.threads,
+        hasMore: result.threads.length === limit,
+      }),
+    );
     return;
   }
 

@@ -54,7 +54,7 @@ export function SkillsPanel() {
                 type="button"
                 key={skill.id}
                 onClick={() => setSelectedSkillId(skill.id)}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300"
+                className="flex items-center justify-between rounded-lg border border-border bg-home-input-bg px-4 py-3 text-left transition-colors hover:border-border"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800">{skill.name}</p>

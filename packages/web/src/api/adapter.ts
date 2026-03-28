@@ -1,4 +1,4 @@
-import type { ChatTransport } from "@ai-sdk/react";
+import type { ChatTransport, UIMessage } from "ai";
 import type { AppSettings } from "../env";
 import { createElectronAdapter } from "./electron";
 import { createHttpAdapter } from "./http";
@@ -12,15 +12,19 @@ export interface ThreadRecord {
   metadata?: Record<string, unknown>;
 }
 
+export interface ThreadListResult {
+  threads: ThreadRecord[];
+  hasMore: boolean;
+}
+
 export interface ApiAdapter {
-  chatTransport: ChatTransport;
+  chatTransport: ChatTransport<UIMessage>;
   settings: {
     get(): Promise<AppSettings>;
     set(key: string, value: unknown): Promise<void>;
-    onChanged(cb: (settings: AppSettings) => void): () => void;
   };
   threads: {
-    list(): Promise<ThreadRecord[]>;
+    list(params?: { page?: number; limit?: number }): Promise<ThreadListResult>;
     delete(threadId: string): Promise<void>;
     rename(threadId: string, title: string): Promise<void>;
   };

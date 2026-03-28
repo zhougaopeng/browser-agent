@@ -6,21 +6,14 @@ const mockSettings = {
   skills: { directory: "~/.browser-agent/skills" },
 };
 
-type SettingsChangedCallback = (settings: typeof mockSettings) => void;
-let onChangedCallback: SettingsChangedCallback | null = null;
-
 const mockApi = {
   chatTransport: {},
   settings: {
     get: vi.fn().mockResolvedValue(mockSettings),
     set: vi.fn().mockResolvedValue(undefined),
-    onChanged: vi.fn((cb: SettingsChangedCallback) => {
-      onChangedCallback = cb;
-      return () => {};
-    }),
   },
   threads: {
-    list: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockResolvedValue({ threads: [], hasMore: false }),
     delete: vi.fn().mockResolvedValue(undefined),
     rename: vi.fn().mockResolvedValue(undefined),
   },
@@ -37,7 +30,6 @@ describe("useSettingsStore", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    onChangedCallback = null;
     vi.resetModules();
 
     const mod = await import("../../src/stores/settings");
@@ -64,24 +56,23 @@ describe("useSettingsStore", () => {
   });
 
   it("updateSetting calls api.settings.set with key and value", async () => {
-    const { updateSetting } = useSettingsStore.getState();
+    const { fetchSettings } = useSettingsStore.getState();
+    await fetchSettings();
 
+    const { updateSetting } = useSettingsStore.getState();
     await updateSetting("model.name", "claude-4");
 
     expect(mockApi.settings.set).toHaveBeenCalledWith("model.name", "claude-4");
   });
 
-  it("onChanged listener updates settings in store", async () => {
-    expect(onChangedCallback).not.toBeNull();
+  it("updateSetting optimistically updates local state", async () => {
+    const { fetchSettings } = useSettingsStore.getState();
+    await fetchSettings();
 
-    const newSettings = {
-      ...mockSettings,
-      model: { ...mockSettings.model, name: "gpt-4.1-mini" },
-    };
-
-    onChangedCallback?.(newSettings);
+    const { updateSetting } = useSettingsStore.getState();
+    await updateSetting("model.name", "claude-4");
 
     const state = useSettingsStore.getState();
-    expect(state.settings).toEqual(newSettings);
+    expect(state.settings?.model.name).toBe("claude-4");
   });
 });

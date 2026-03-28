@@ -19,10 +19,12 @@ interface ElectronAPI {
   settings: {
     get(): Promise<AppSettings>;
     set(key: string, value: unknown): Promise<void>;
-    onChanged(cb: (settings: AppSettings) => void): () => void;
   };
   threads: {
-    list(): Promise<unknown[]>;
+    list(params?: {
+      page?: number;
+      limit?: number;
+    }): Promise<import("./api/adapter").ThreadListResult>;
     delete(threadId: string): Promise<void>;
     rename(threadId: string, title: string): Promise<void>;
   };

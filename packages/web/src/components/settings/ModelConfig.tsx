@@ -1,7 +1,7 @@
 import type { AppSettings } from "../../env";
 import { useSettingsStore } from "../../stores/settings";
 
-const PROVIDERS = ["openai", "anthropic", "google", "deepseek"];
+const PROVIDERS = ["openai", "anthropic", "google", "deepseek", "poe"];
 
 interface ModelConfigProps {
   settings: AppSettings;
@@ -19,7 +19,7 @@ export function ModelConfig({ settings }: ModelConfigProps) {
           <select
             value={settings.model.provider}
             onChange={(e) => update("model.provider", e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           >
             {PROVIDERS.map((p) => (
               <option key={p} value={p}>
@@ -36,7 +36,7 @@ export function ModelConfig({ settings }: ModelConfigProps) {
             value={settings.model.name}
             onChange={(e) => update("model.name", e.target.value)}
             placeholder="gpt-4.1"
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           />
         </label>
 
@@ -47,7 +47,7 @@ export function ModelConfig({ settings }: ModelConfigProps) {
             value={settings.model.apiKey}
             onChange={(e) => update("model.apiKey", e.target.value)}
             placeholder="sk-..."
-            className="w-full rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm outline-none focus:border-accent/40"
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
           />
         </label>
       </div>
