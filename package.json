@@ -1,14 +1,17 @@
 {
-  "name": "electron-browser-agent",
+  "name": "browser-agent-monorepo",
   "version": "0.1.0",
-  "description": "Electron desktop app wrapping Mastra + Playwright MCP browser agent",
-  "main": "./out/main/index.js",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "package": "electron-builder",
+    "dev": "concurrently -n web,electron \"pnpm -F @browser-agent/web dev\" \"wait-on http://localhost:5173 && pnpm -F @browser-agent/electron dev\"",
+    "dev:server": "pnpm -F @browser-agent/server dev",
+    "dev:web": "pnpm -F @browser-agent/web dev",
+    "build": "pnpm -F @browser-agent/server build && pnpm -F @browser-agent/web build",
+    "build:server": "pnpm -F @browser-agent/server build",
+    "build:web": "pnpm -F @browser-agent/web build",
+    "build:electron": "pnpm -F @browser-agent/electron build",
+    "package": "pnpm build && pnpm -F @browser-agent/electron fetch-frontend --local ../web/dist && pnpm -F @browser-agent/electron package",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",
@@ -20,22 +23,6 @@
     "node": ">=22.13.0"
   },
   "packageManager": "pnpm@10.29.3",
-  "dependencies": {
-    "@ai-sdk/react": "^3.0.143",
-    "@mastra/ai-sdk": "^1.2.1",
-    "@mastra/core": "^1.17.0",
-    "@mastra/libsql": "^1.7.2",
-    "@mastra/loggers": "^1.0.3",
-    "@mastra/mcp": "^1.3.1",
-    "@mastra/memory": "^1.10.0",
-    "@playwright/mcp": "^0.0.68",
-    "ai": "^6.0.141",
-    "electron-store": "^11.0.2",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zod": "^4.3.6",
-    "zustand": "^5.0.12"
-  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "biome check --fix --no-errors-on-unmatched",
@@ -47,20 +34,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.9",
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.2.0",
-    "autoprefixer": "^10.4.27",
-    "electron": "^41.1.0",
-    "electron-builder": "^26.8.1",
-    "electron-vite": "^5.0.0",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "postcss": "^8.5.8",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "wait-on": "^8.0.3"
   }
 }

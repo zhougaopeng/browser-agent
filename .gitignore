@@ -1,10 +1,14 @@
 node_modules/
 out/
 dist/
+*.tsbuildinfo
 *.db
 *.db-journal
 .traces/
 .playwright-profile/
+
+# Electron frontend embed
+packages/electron/frontend-dist/
 
 # OS
 .DS_Store

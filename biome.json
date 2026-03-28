@@ -2,7 +2,7 @@
   "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**", "tests/**", "electron.vite.config.ts", "vitest.config.ts"]
+    "includes": ["packages/*/src/**", "packages/*/tests/**"]
   },
   "formatter": {
     "enabled": true,

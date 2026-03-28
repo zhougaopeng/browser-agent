@@ -1,0 +1,25 @@
+appId: com.browser-agent.app
+productName: Browser Agent
+directories:
+  buildResources: build
+files:
+  - "out/**/*"
+  - "!src/*"
+  - "!electron.vite.config.*"
+  - "!{tsconfig.json,tsconfig.node.json}"
+extraResources:
+  - from: frontend-dist
+    to: frontend-dist
+    filter:
+      - "**/*"
+mac:
+  target:
+    - dmg
+    - zip
+  artifactName: "${name}-${version}-${arch}.${ext}"
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage
