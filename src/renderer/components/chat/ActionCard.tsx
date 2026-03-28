@@ -1,13 +1,7 @@
-interface ToolInvocation {
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
-  state: "call" | "partial-call" | "result";
-  result?: unknown;
-}
+import type { DynamicToolUIPart } from "ai";
 
 interface ActionCardProps {
-  invocation: ToolInvocation;
+  invocation: DynamicToolUIPart;
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -29,7 +23,9 @@ const TOOL_LABELS: Record<string, string> = {
   browser_tabs: "标签列表",
 };
 
-function getArgSummary(_toolName: string, args: Record<string, unknown>): string {
+function getArgSummary(_toolName: string, input: unknown): string {
+  if (!input || typeof input !== "object") return "";
+  const args = input as Record<string, unknown>;
   if (args.url) return String(args.url);
   if (args.text) return String(args.text).slice(0, 60);
   if (args.ref) return `ref="${args.ref}"`;
@@ -38,22 +34,20 @@ function getArgSummary(_toolName: string, args: Record<string, unknown>): string
 }
 
 export function ActionCard({ invocation }: ActionCardProps) {
-  const { toolName, args, state } = invocation;
+  const { toolName, state } = invocation;
+  const input = "input" in invocation ? invocation.input : undefined;
   const label = TOOL_LABELS[toolName] ?? toolName.replace("browser_", "");
-  const summary = getArgSummary(toolName, args ?? {});
-
-  const stateColors = {
-    call: "border-blue-200 bg-blue-50/50",
-    "partial-call": "border-blue-200 bg-blue-50/50",
-    result: "border-gray-200 bg-gray-50/50",
-  };
+  const summary = getArgSummary(toolName, input);
+  const done = state === "output-available" || state === "output-error";
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs ${stateColors[state]}`}
+      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs ${
+        done ? "border-gray-200 bg-gray-50/50" : "border-blue-200 bg-blue-50/50"
+      }`}
     >
       <span className="shrink-0">
-        {state === "result" ? (
+        {done ? (
           <span className="text-green-500">✓</span>
         ) : (
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />

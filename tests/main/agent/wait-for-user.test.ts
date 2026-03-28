@@ -14,7 +14,9 @@ import { describe, expect, it, vi } from "vitest";
 describe("waitForUserTool", () => {
   async function getTool() {
     const mod = await import("../../../src/main/agent/wait-for-user");
-    return mod.waitForUserTool;
+    const tool = mod.waitForUserTool;
+    if (!tool.execute) throw new Error("tool.execute is not defined");
+    return tool as typeof tool & { execute: NonNullable<typeof tool.execute> };
   }
 
   it("calls agent.suspend with reason when no resumeData (first call)", async () => {

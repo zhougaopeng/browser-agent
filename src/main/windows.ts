@@ -5,7 +5,7 @@ let mainWindow: BrowserWindow | null = null;
 
 export function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
-    width: 480,
+    width: 960,
     height: 720,
     minWidth: 380,
     minHeight: 500,

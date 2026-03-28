@@ -1,16 +1,13 @@
+import type { DynamicToolUIPart } from "ai";
+
 interface WaitCardProps {
-  invocation: {
-    toolCallId: string;
-    toolName: string;
-    args: Record<string, unknown>;
-    state: "call" | "partial-call" | "result";
-    result?: unknown;
-  };
+  invocation: DynamicToolUIPart;
 }
 
 export function WaitCard({ invocation }: WaitCardProps) {
-  const reason = String(invocation.args?.reason ?? "等待用户操作");
-  const isWaiting = invocation.state === "call";
+  const input = "input" in invocation ? (invocation.input as Record<string, unknown>) : undefined;
+  const reason = String(input?.reason ?? "等待用户操作");
+  const isWaiting = invocation.state === "input-available";
 
   if (!isWaiting) {
     return (

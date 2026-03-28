@@ -1,3 +1,6 @@
+import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
+import { handleChatStream } from "@mastra/ai-sdk";
+import { createUIMessageStreamResponse } from "ai";
 import { app, protocol } from "electron";
 import { createBrowserAgent } from "./agent/browser-agent";
 import { getMCPClient, initBrowserTools } from "./agent/browser-tools";
@@ -16,15 +19,12 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 app.whenReady().then(async () => {
-  // 1. Window + IPC first so the UI appears immediately
   const mainWindow = createMainWindow();
   setupSettingsIPC(mainWindow);
 
-  // 2. Skills directory
   const skillsDir = settingsStore.get("skills.directory") as string;
   if (skillsDir) skillManager.setDirectory(skillsDir);
 
-  // 3. MCP + browser tools (launches Chrome — may be slow)
   let browserTools = {};
   try {
     browserTools = await initBrowserTools(settingsStore.get("browser"));
@@ -32,33 +32,40 @@ app.whenReady().then(async () => {
     console.error("[main] Failed to init browser tools:", err);
   }
 
-  // 4. Agent + Mastra (depend on browser tools being ready)
   const agent = createBrowserAgent(browserTools);
   const mastra = createMastra(agent);
 
-  // 5. protocol.handle — Chat endpoint
   protocol.handle("agent", async (request) => {
     const url = new URL(request.url);
 
     if (url.pathname === "/chat" && request.method === "POST") {
-      const { messages, threadId } = await request.json();
-      const agentInstance = mastra.getAgent("browserAgent");
+      const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
       const catalog = skillManager.buildCatalog(await skillManager.scanAll());
+      const agentInstance = mastra.getAgent("browserAgent");
+      const instructions = await agentInstance.getInstructions();
 
-      const result = agentInstance.stream(messages, {
-        maxSteps: 50,
-        threadId: threadId ?? crypto.randomUUID(),
-        resourceId: "desktop-user",
-        instructions: agentInstance.instructions + catalog,
-        onStepFinish: async (event: unknown) => {
-          await overlayController.handleStep(event);
-        },
-        onFinish: async () => {
-          await overlayController.hide();
+      const stream = await handleChatStream({
+        mastra,
+        agentId: "browserAgent",
+        version: "v6",
+        params,
+        defaultOptions: {
+          maxSteps: 50,
+          memory: {
+            thread: params.id ?? crypto.randomUUID(),
+            resource: "desktop-user",
+          },
+          instructions: `${instructions}${catalog}`,
+          onStepFinish: async (event: unknown) => {
+            await overlayController.handleStep(event);
+          },
+          onFinish: async () => {
+            await overlayController.hide();
+          },
         },
       });
 
-      return result.toDataStreamResponse();
+      return createUIMessageStreamResponse({ stream });
     }
 
     return new Response("Not Found", { status: 404 });

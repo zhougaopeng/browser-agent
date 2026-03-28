@@ -34,8 +34,10 @@ export class OverlayController {
     try {
       const tools = getBrowserTools();
       const evaluate = tools.browser_evaluate;
-      if (!evaluate) return;
-      await evaluate.execute({ expression: code });
+      if (!evaluate || !("execute" in evaluate) || !evaluate.execute) return;
+      await (
+        evaluate.execute as (params: Record<string, unknown>, ctx: unknown) => Promise<unknown>
+      )({ expression: code }, {});
     } catch {
       // browser_evaluate can fail if no page is open — silently ignore
     }

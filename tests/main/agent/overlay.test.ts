@@ -22,9 +22,10 @@ describe("OverlayController", () => {
     it("evaluates automating overlay expression via browser_evaluate", async () => {
       await controller.showAutomating();
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("automating"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("automating") },
+        {},
+      );
     });
   });
 
@@ -32,12 +33,14 @@ describe("OverlayController", () => {
     it("evaluates waiting overlay expression with reason text", async () => {
       await controller.showWaiting("请完成登录操作");
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("waiting"),
-      });
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("请完成登录操作"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("waiting") },
+        {},
+      );
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("请完成登录操作") },
+        {},
+      );
     });
   });
 
@@ -45,9 +48,7 @@ describe("OverlayController", () => {
     it("evaluates hide expression", async () => {
       await controller.hide();
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("hide"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith({ expression: expect.stringContaining("hide") }, {});
     });
   });
 
@@ -65,12 +66,14 @@ describe("OverlayController", () => {
 
       await controller.handleStep(event);
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("waiting"),
-      });
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("请完成登录"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("waiting") },
+        {},
+      );
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("请完成登录") },
+        {},
+      );
     });
 
     it("calls showAutomating when event contains browser tool calls", async () => {
@@ -80,9 +83,10 @@ describe("OverlayController", () => {
 
       await controller.handleStep(event);
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("automating"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("automating") },
+        {},
+      );
     });
 
     it("prioritizes wait_for_user over other tool calls", async () => {
@@ -100,9 +104,10 @@ describe("OverlayController", () => {
       await controller.handleStep(event);
 
       expect(mockExecute).toHaveBeenCalledTimes(1);
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("waiting"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("waiting") },
+        {},
+      );
     });
 
     it("does nothing when event has no tool calls", async () => {
@@ -128,9 +133,10 @@ describe("OverlayController", () => {
 
       await controller.handleStep(event);
 
-      expect(mockExecute).toHaveBeenCalledWith({
-        expression: expect.stringContaining("automating"),
-      });
+      expect(mockExecute).toHaveBeenCalledWith(
+        { expression: expect.stringContaining("automating") },
+        {},
+      );
     });
   });
 });

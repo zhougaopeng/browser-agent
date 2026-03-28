@@ -1,18 +1,15 @@
+import type { DynamicToolUIPart } from "ai";
 import { useState } from "react";
 
 interface ScreenshotCardProps {
-  invocation: {
-    toolCallId: string;
-    toolName: string;
-    state: string;
-    result?: unknown;
-  };
+  invocation: DynamicToolUIPart;
 }
 
 export function ScreenshotCard({ invocation }: ScreenshotCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const result = invocation.result as string | undefined;
+  const result =
+    invocation.state === "output-available" ? (invocation.output as string | undefined) : undefined;
   if (!result) return null;
 
   const isBase64 = result.startsWith("data:image") || result.startsWith("/9j");

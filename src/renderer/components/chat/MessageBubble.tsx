@@ -18,7 +18,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         }`}
       >
         {isUser ? (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+            {message.parts
+              ?.filter((p) => p.type === "text")
+              .map((p) => p.text)
+              .join("") ?? ""}
+          </p>
         ) : (
           <div className="flex flex-col gap-2">
             {(message.parts ?? []).map((part) => {
@@ -32,15 +37,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   </p>
                 );
               }
-              if (part.type === "tool-invocation") {
-                const inv = part.toolInvocation;
-                if (inv.toolName === "wait_for_user") {
-                  return <WaitCard key={inv.toolCallId} invocation={inv} />;
+              if (part.type === "dynamic-tool") {
+                if (part.toolName === "wait_for_user") {
+                  return <WaitCard key={part.toolCallId} invocation={part} />;
                 }
-                if (inv.toolName === "browser_screenshot" && inv.state === "result") {
-                  return <ScreenshotCard key={inv.toolCallId} invocation={inv} />;
+                if (part.toolName === "browser_screenshot" && part.state === "output-available") {
+                  return <ScreenshotCard key={part.toolCallId} invocation={part} />;
                 }
-                return <ActionCard key={inv.toolCallId} invocation={inv} />;
+                return <ActionCard key={part.toolCallId} invocation={part} />;
               }
               return null;
             })}

@@ -32,14 +32,8 @@ const mockElectronAPI = {
 vi.stubGlobal("window", { electronAPI: mockElectronAPI });
 
 describe("useSettingsStore", () => {
-  let useSettingsStore: {
-    getState: () => {
-      settings: typeof mockSettings | null;
-      loading: boolean;
-      fetchSettings: () => Promise<void>;
-      updateSetting: (key: string, value: unknown) => Promise<void>;
-    };
-  };
+  type SettingsModule = typeof import("../../../src/renderer/stores/settings");
+  let useSettingsStore: SettingsModule["useSettingsStore"];
 
   beforeEach(async () => {
     vi.clearAllMocks();

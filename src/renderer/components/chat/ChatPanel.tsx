@@ -1,18 +1,17 @@
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { InputBar } from "./InputBar";
 import { MessageBubble } from "./MessageBubble";
 import { QuickActions } from "./QuickActions";
 
+const transport = new DefaultChatTransport({ api: "agent://chat" });
+
 export function ChatPanel() {
-  const [threadId] = useState(() => crypto.randomUUID());
+  const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { messages, input, handleSubmit, setInput, status, stop } = useChat({
-    api: "agent://chat",
-    maxSteps: 50,
-    body: { threadId },
-  });
+  const { messages, sendMessage, status, stop } = useChat({ transport });
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -21,9 +20,9 @@ export function ChatPanel() {
     return (
       lastAssistant?.parts?.some(
         (p) =>
-          p.type === "tool-invocation" &&
-          p.toolInvocation.toolName === "wait_for_user" &&
-          p.toolInvocation.state === "call",
+          p.type === "dynamic-tool" &&
+          p.toolName === "wait_for_user" &&
+          p.state === "input-available",
       ) ?? false
     );
   }, [messages]);
@@ -33,14 +32,19 @@ export function ChatPanel() {
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
+  const handleSubmit = () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput("");
+    sendMessage({ text });
+  };
+
   const handleQuickResume = () => {
-    setInput("我已完成操作，请继续执行");
-    handleSubmit();
+    sendMessage({ text: "我已完成操作，请继续执行" });
   };
 
   return (
     <div className="flex h-full flex-col">
-      {/* 消息列表 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
@@ -64,10 +68,8 @@ export function ChatPanel() {
         )}
       </div>
 
-      {/* 快捷操作 */}
       {isSuspended && <QuickActions onResume={handleQuickResume} />}
 
-      {/* 输入栏 */}
       <InputBar
         input={input}
         onChange={setInput}

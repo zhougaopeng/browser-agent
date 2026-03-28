@@ -5,11 +5,13 @@ const mockListToolsets = vi.fn().mockResolvedValue({
 });
 const mockDisconnect = vi.fn().mockResolvedValue(undefined);
 
+class MockMCPClient {
+  listToolsets = mockListToolsets;
+  disconnect = mockDisconnect;
+}
+
 vi.mock("@mastra/mcp", () => ({
-  MCPClient: vi.fn().mockImplementation(() => ({
-    listToolsets: mockListToolsets,
-    disconnect: mockDisconnect,
-  })),
+  MCPClient: vi.fn().mockImplementation(MockMCPClient),
 }));
 
 vi.mock("electron", () => ({
