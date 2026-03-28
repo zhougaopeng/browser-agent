@@ -29,6 +29,7 @@ export const waitForUserTool = createTool({
         userMessage: (agent.resumeData as { userMessage?: string }).userMessage ?? "用户操作完成",
       };
     }
-    return agent?.suspend({ reason, waitingFor: "user_action" });
+    await agent?.suspend({ reason, waitingFor: "user_action" });
+    return { completed: false };
   },
 });

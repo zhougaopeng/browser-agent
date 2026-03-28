@@ -1,5 +1,5 @@
 import path from "node:path";
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -12,7 +12,7 @@ export function createMainWindow(): BrowserWindow {
     titleBarStyle: "hidden",
     trafficLightPosition: { x: 12, y: 12 },
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.js"),
+      preload: path.join(__dirname, "../preload/index.cjs"),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -23,6 +23,10 @@ export function createMainWindow(): BrowserWindow {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+  }
+
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 
   mainWindow.on("closed", () => {

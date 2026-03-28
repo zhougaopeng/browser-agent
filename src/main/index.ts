@@ -16,18 +16,27 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 app.whenReady().then(async () => {
-  // 1. Skills directory
+  // 1. Window + IPC first so the UI appears immediately
+  const mainWindow = createMainWindow();
+  setupSettingsIPC(mainWindow);
+
+  // 2. Skills directory
   const skillsDir = settingsStore.get("skills.directory") as string;
   if (skillsDir) skillManager.setDirectory(skillsDir);
 
-  // 2. MCP + browser tools (launches Chrome)
-  const browserTools = await initBrowserTools(settingsStore.get("browser"));
+  // 3. MCP + browser tools (launches Chrome — may be slow)
+  let browserTools = {};
+  try {
+    browserTools = await initBrowserTools(settingsStore.get("browser"));
+  } catch (err) {
+    console.error("[main] Failed to init browser tools:", err);
+  }
 
-  // 3. Agent + Mastra (depend on browser tools being ready)
+  // 4. Agent + Mastra (depend on browser tools being ready)
   const agent = createBrowserAgent(browserTools);
   const mastra = createMastra(agent);
 
-  // 4. protocol.handle — Chat endpoint
+  // 5. protocol.handle — Chat endpoint
   protocol.handle("agent", async (request) => {
     const url = new URL(request.url);
 
@@ -54,10 +63,6 @@ app.whenReady().then(async () => {
 
     return new Response("Not Found", { status: 404 });
   });
-
-  // 5. Window + IPC
-  const mainWindow = createMainWindow();
-  setupSettingsIPC(mainWindow);
 });
 
 app.on("before-quit", async () => {
