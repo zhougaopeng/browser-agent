@@ -1,4 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  createThread,
+  deleteThread,
+  getThread,
+  listMessages,
+  listThreads,
+  renameThread,
+} from "../api";
 import type { AppInstance } from "../index";
 
 export async function handleThreadsRoute(
@@ -9,37 +17,47 @@ export async function handleThreadsRoute(
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
   const parts = url.pathname.split("/").filter(Boolean);
   const threadId = parts[2];
+  const subResource = parts[3];
 
-  if (req.method === "GET" && !threadId) {
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (!memoryStore) {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ threads: [], hasMore: false }));
+  if (req.method === "GET" && threadId && subResource === "messages") {
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 40, 1), 200);
+    const page = Math.max(Number(url.searchParams.get("page")) || 0, 0);
+    const result = await listMessages(app, { threadId, limit, page });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (req.method === "GET" && threadId && !subResource) {
+    const thread = await getThread(app, threadId);
+    if (!thread) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Thread not found" }));
       return;
     }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(thread));
+    return;
+  }
+
+  if (req.method === "GET" && !threadId) {
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 20, 1), 100);
     const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
-
-    const result = await memoryStore.listThreads({
-      filter: { resourceId: app.getResourceId() },
-      orderBy: { field: "updatedAt", direction: "DESC" },
-      perPage: limit,
-      page,
-    });
-
+    const result = await listThreads(app, { limit, page });
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        threads: result.threads,
-        hasMore: result.threads.length === limit,
-      }),
-    );
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (req.method === "POST" && !threadId) {
+    const result = await createThread(app);
+    res.writeHead(201, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(result));
     return;
   }
 
   if (req.method === "DELETE" && threadId) {
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (memoryStore) await memoryStore.deleteThread({ threadId });
+    await deleteThread(app, threadId);
     res.writeHead(204).end();
     return;
   }
@@ -47,10 +65,7 @@ export async function handleThreadsRoute(
   if (req.method === "PATCH" && threadId) {
     const body = await readBody(req);
     const { title } = JSON.parse(body) as { title: string };
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (memoryStore) {
-      await memoryStore.updateThread({ id: threadId, title, metadata: {} });
-    }
+    await renameThread(app, threadId, title);
     res.writeHead(204).end();
     return;
   }

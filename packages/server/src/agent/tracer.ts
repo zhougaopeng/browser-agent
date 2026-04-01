@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 interface TracerToolCallPayload {
@@ -42,18 +42,18 @@ export class AgentTracer {
   private tracesDir: string;
   private stepCounters = new Map<string, number>();
   private stepTimestamps = new Map<string, number>();
-  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor(agentId: string, tracesDir: string) {
     this.agentId = agentId;
     this.tracesDir = tracesDir;
   }
 
-  private ensureDir() {
-    if (!this.initialized) {
-      mkdirSync(this.tracesDir, { recursive: true });
-      this.initialized = true;
+  private ensureDir(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = mkdir(this.tracesDir, { recursive: true }).then(() => {});
     }
+    return this.initPromise;
   }
 
   onStepFinish = async (event: StepFinishEvent) => {
@@ -105,8 +105,10 @@ export class AgentTracer {
       );
     }
 
-    this.ensureDir();
+    await this.ensureDir();
     const traceFile = join(this.tracesDir, `${runId}.jsonl`);
+
+    const lines: string[] = [];
 
     for (const tc of toolCalls) {
       const matchingResult = toolResults.find((tr) => tr.toolCallId === tc.toolCallId);
@@ -122,7 +124,7 @@ export class AgentTracer {
         finishReason: event.finishReason,
         usage: event.usage,
       };
-      appendFileSync(traceFile, `${safeStringify(entry)}\n`);
+      lines.push(safeStringify(entry));
     }
 
     if (toolCalls.length === 0 && event.text) {
@@ -136,7 +138,13 @@ export class AgentTracer {
         finishReason: event.finishReason,
         usage: event.usage,
       };
-      appendFileSync(traceFile, `${safeStringify(entry)}\n`);
+      lines.push(safeStringify(entry));
+    }
+
+    if (lines.length > 0) {
+      appendFile(traceFile, `${lines.join("\n")}\n`).catch((err) => {
+        console.error(`[${this.agentId}] Failed to write trace:`, err);
+      });
     }
   };
 }

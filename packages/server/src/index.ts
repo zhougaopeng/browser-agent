@@ -52,7 +52,7 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
     }
 
     const modelId = `${settings.model.provider}/${settings.model.name}`;
-    const agent = createBrowserAgent(getBrowserTools(), paths.traces, modelId);
+    const agent = createBrowserAgent(getBrowserTools(), modelId);
     currentMastra = createMastra(agent, paths);
     console.log(`[server] Agent rebuilt with model: ${modelId}`);
   }
@@ -77,6 +77,22 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
   return app;
 }
 
+export {
+  type ChatStreamHandlerParams,
+  type CreateChatStreamResult,
+  createChatResponse,
+  createChatStream,
+  createThread,
+  deleteThread,
+  getSettings,
+  getThread,
+  type ListMessagesParams,
+  type ListThreadsParams,
+  listMessages,
+  listThreads,
+  renameThread,
+  updateSetting,
+} from "./api";
 export type { ServerConfig } from "./config";
 export { getDefaultConfig } from "./config";
 export type { AppPaths } from "./paths";

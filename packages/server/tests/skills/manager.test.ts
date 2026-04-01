@@ -31,8 +31,12 @@ describe("SkillManager", () => {
       fs.readdir = vi.fn().mockResolvedValue(["feishu-doc", "github-pr"]);
       fs.readFile = vi
         .fn()
-        .mockResolvedValueOnce("# 飞书文档\n创建和编辑飞书文档\n\n详细内容...")
-        .mockResolvedValueOnce("# GitHub PR\n创建 GitHub Pull Request\n\n详细内容...");
+        .mockResolvedValueOnce(
+          "---\nname: 飞书文档\ndescription: 创建和编辑飞书文档\n---\n\n详细内容...",
+        )
+        .mockResolvedValueOnce(
+          "---\nname: GitHub PR\ndescription: 创建 GitHub Pull Request\n---\n\n详细内容...",
+        );
 
       const manager = await getManager();
       const skills = await manager.scanAll();
@@ -79,7 +83,7 @@ describe("SkillManager", () => {
       fs.readFile = vi
         .fn()
         .mockRejectedValueOnce(new Error("ENOENT"))
-        .mockResolvedValueOnce("# Valid\nA valid skill\n");
+        .mockResolvedValueOnce("---\nname: Valid\ndescription: A valid skill\n---\n");
 
       const manager = await getManager();
       const skills = await manager.scanAll();
@@ -113,7 +117,9 @@ describe("SkillManager", () => {
     it("includes path to SKILL.md in SkillMeta", async () => {
       fs.mkdir = vi.fn().mockResolvedValue(undefined);
       fs.readdir = vi.fn().mockResolvedValue(["my-skill"]);
-      fs.readFile = vi.fn().mockResolvedValue("# My Skill\nDoes things\n");
+      fs.readFile = vi
+        .fn()
+        .mockResolvedValue("---\nname: My Skill\ndescription: Does things\n---\n");
 
       const manager = await getManager();
       const skills = await manager.scanAll();

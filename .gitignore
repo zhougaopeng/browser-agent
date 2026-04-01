@@ -6,6 +6,7 @@ dist/
 *.db-journal
 .traces/
 .playwright-profile/
+.playwright-mcp/
 
 # Electron frontend embed
 packages/electron/frontend-dist/

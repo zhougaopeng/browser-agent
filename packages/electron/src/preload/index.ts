@@ -12,7 +12,11 @@ const api = {
     },
   },
   threads: {
+    create: () => ipcRenderer.invoke("threads:create"),
+    get: (threadId: string) => ipcRenderer.invoke("threads:get", threadId),
     list: () => ipcRenderer.invoke("threads:list"),
+    messages: (threadId: string, params?: { page?: number; limit?: number }) =>
+      ipcRenderer.invoke("threads:messages", threadId, params?.page, params?.limit),
     delete: (threadId: string) => ipcRenderer.invoke("threads:delete", threadId),
     rename: (threadId: string, title: string) =>
       ipcRenderer.invoke("threads:rename", threadId, title),

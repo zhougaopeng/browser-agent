@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import matter from "gray-matter";
 import type { SkillMeta } from "./types";
 
 const DEFAULT_SKILLS_DIR = join(homedir(), ".browser-agent", "skills");
@@ -60,14 +61,11 @@ class SkillManager {
   }
 
   private parseMeta(dirName: string, filePath: string, content: string): SkillMeta | null {
-    const nameMatch = content.match(/^#\s+(.+)$/m);
-    if (!nameMatch) return null;
+    const { data } = matter(content);
+    const name = typeof data.name === "string" ? data.name.trim() : null;
+    if (!name) return null;
 
-    const name = nameMatch[1].trim();
-    const afterHeading = content.slice((nameMatch.index ?? 0) + nameMatch[0].length).trim();
-    const descLine = afterHeading.split("\n").find((l) => l.trim().length > 0);
-    const description = descLine?.trim() ?? "";
-
+    const description = typeof data.description === "string" ? data.description.trim() : "";
     return { id: dirName, name, description, path: filePath };
   }
 }

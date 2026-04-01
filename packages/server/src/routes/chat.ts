@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
-import { handleChatStream } from "@mastra/ai-sdk";
 import { createUIMessageStreamResponse } from "ai";
+import { createChatStream } from "../api";
 import type { AppInstance } from "../index";
 
 export async function handleChatRoute(
@@ -16,32 +16,7 @@ export async function handleChatRoute(
 
   const body = await readBody(req);
   const params = JSON.parse(body) as ChatStreamHandlerParams & { id?: string };
-  const threadId = params.id ?? crypto.randomUUID();
-
-  const catalog = app.skillManager.buildCatalog(await app.skillManager.scanAll());
-  const agentInstance = app.mastra.getAgent("browserAgent");
-  const instructions = await agentInstance.getInstructions();
-
-  const stream = await handleChatStream({
-    mastra: app.mastra,
-    agentId: "browserAgent",
-    version: "v6",
-    params,
-    defaultOptions: {
-      maxSteps: 50,
-      memory: {
-        thread: threadId,
-        resource: app.getResourceId(),
-      },
-      instructions: `${instructions}${catalog}`,
-      onStepFinish: async (event: unknown) => {
-        await app.overlayController.handleStep(event);
-      },
-      onFinish: async () => {
-        await app.overlayController.hide();
-      },
-    },
-  });
+  const { stream, threadId } = await createChatStream(app, params);
 
   const streamResponse = createUIMessageStreamResponse({ stream });
 

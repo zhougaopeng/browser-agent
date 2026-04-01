@@ -12,7 +12,7 @@ export function SettingsPanel() {
 
   if (loading || !settings) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-gray-400">
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         加载设置...
       </div>
     );
@@ -21,15 +21,15 @@ export function SettingsPanel() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-lg px-6 py-6">
-        <h1 className="mb-6 text-lg font-semibold text-gray-800">设置</h1>
+        <h1 className="mb-6 text-lg font-semibold text-foreground">设置</h1>
         <div className="flex flex-col gap-8">
           <ModelConfig settings={settings} />
           <BrowserConfig settings={settings} />
 
           <section>
-            <h2 className="mb-3 text-sm font-medium text-gray-700">Skills 配置</h2>
+            <h2 className="mb-3 text-sm font-medium text-foreground/80">Skills 配置</h2>
             <label className="block">
-              <span className="mb-1 block text-xs text-gray-500">Skills 根目录</span>
+              <span className="mb-1 block text-xs text-muted-foreground">Skills 根目录</span>
               <input
                 type="text"
                 value={settings.skills.directory}

@@ -21,12 +21,18 @@ interface ElectronAPI {
     set(key: string, value: unknown): Promise<void>;
   };
   threads: {
+    create(params?: { title?: string }): Promise<{ id: string }>;
+    get(threadId: string): Promise<import("./api/adapter").ThreadRecord>;
     list(params?: {
       page?: number;
       limit?: number;
     }): Promise<import("./api/adapter").ThreadListResult>;
     delete(threadId: string): Promise<void>;
     rename(threadId: string, title: string): Promise<void>;
+    messages(
+      threadId: string,
+      params?: { page?: number; limit?: number },
+    ): Promise<import("./api/adapter").MessageListResult>;
   };
 }
 

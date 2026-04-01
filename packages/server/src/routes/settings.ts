@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { getSettings, updateSetting } from "../api";
 import type { AppInstance } from "../index";
 
 export async function handleSettingsRoute(
@@ -8,19 +9,16 @@ export async function handleSettingsRoute(
 ): Promise<void> {
   if (req.method === "GET") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(app.settingsStore.store));
+    res.end(JSON.stringify(getSettings(app)));
     return;
   }
 
   if (req.method === "POST") {
     const body = await readBody(req);
     const { key, value } = JSON.parse(body) as { key: string; value: unknown };
-    (app.settingsStore as unknown as { set: (k: string, v: unknown) => void }).set(key, value);
-
-    await app.rebuild();
-
+    const store = await updateSetting(app, key, value);
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(app.settingsStore.store));
+    res.end(JSON.stringify(store));
     return;
   }
 

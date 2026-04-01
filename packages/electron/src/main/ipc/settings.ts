@@ -1,4 +1,4 @@
-import type { AppInstance } from "@browser-agent/server";
+import { type AppInstance, getSettings, updateSetting } from "@browser-agent/server";
 import { type BrowserWindow, ipcMain } from "electron";
 
 export function setupSettingsIPC(
@@ -7,12 +7,12 @@ export function setupSettingsIPC(
 ): void {
   ipcMain.handle("settings:get", async () => {
     const app = await appPromise;
-    return app.settingsStore.store;
+    return getSettings(app);
   });
 
   ipcMain.handle("settings:set", async (_event, key: string, value: unknown) => {
     const app = await appPromise;
-    (app.settingsStore as unknown as { set: (k: string, v: unknown) => void }).set(key, value);
-    mainWindow.webContents.send("settings:changed", app.settingsStore.store);
+    const store = await updateSetting(app, key, value);
+    mainWindow.webContents.send("settings:changed", store);
   });
 }

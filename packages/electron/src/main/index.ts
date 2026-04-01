@@ -1,7 +1,4 @@
-import { type AppInstance, createApp } from "@browser-agent/server";
-import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
-import { handleChatStream } from "@mastra/ai-sdk";
-import { createUIMessageStreamResponse } from "ai";
+import { type ChatStreamHandlerParams, createApp, createChatResponse } from "@browser-agent/server";
 import { app, protocol } from "electron";
 import { setupSettingsIPC } from "./ipc/settings";
 import { setupThreadsIPC } from "./ipc/threads";
@@ -33,50 +30,13 @@ app.whenReady().then(async () => {
     const url = new URL(request.url);
 
     if (url.pathname === "/chat" && request.method === "POST") {
-      return handleChat(request, serverApp);
+      const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
+      return createChatResponse(serverApp, params);
     }
 
     return new Response("Not Found", { status: 404 });
   });
 });
-
-async function handleChat(request: Request, serverApp: AppInstance): Promise<Response> {
-  const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
-  const threadId = params.id ?? crypto.randomUUID();
-
-  const catalog = serverApp.skillManager.buildCatalog(await serverApp.skillManager.scanAll());
-  const agentInstance = serverApp.mastra.getAgent("browserAgent");
-  const instructions = await agentInstance.getInstructions();
-
-  const stream = await handleChatStream({
-    mastra: serverApp.mastra,
-    agentId: "browserAgent",
-    version: "v6",
-    params,
-    defaultOptions: {
-      maxSteps: 50,
-      memory: {
-        thread: threadId,
-        resource: serverApp.getResourceId(),
-      },
-      instructions: `${instructions}${catalog}`,
-      onStepFinish: async (event: unknown) => {
-        await serverApp.overlayController.handleStep(event);
-      },
-      onFinish: async () => {
-        await serverApp.overlayController.hide();
-      },
-    },
-  });
-
-  const streamResponse = createUIMessageStreamResponse({ stream });
-  const headers = new Headers(streamResponse.headers);
-  headers.set("X-Thread-Id", threadId);
-  return new Response(streamResponse.body, {
-    status: streamResponse.status,
-    headers,
-  });
-}
 
 app.on("before-quit", async () => {
   // cleanup handled by server

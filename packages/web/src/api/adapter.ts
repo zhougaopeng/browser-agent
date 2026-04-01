@@ -17,6 +17,21 @@ export interface ThreadListResult {
   hasMore: boolean;
 }
 
+export interface MessageRecord {
+  id: string;
+  threadId: string;
+  role: string;
+  content: unknown;
+  createdAt: string;
+  resourceId?: string;
+  type?: string;
+}
+
+export interface MessageListResult {
+  messages: MessageRecord[];
+  hasMore: boolean;
+}
+
 export interface ApiAdapter {
   chatTransport: ChatTransport<UIMessage>;
   settings: {
@@ -24,9 +39,15 @@ export interface ApiAdapter {
     set(key: string, value: unknown): Promise<void>;
   };
   threads: {
+    create(params?: { title?: string }): Promise<ThreadRecord>;
+    get(threadId: string): Promise<ThreadRecord>;
     list(params?: { page?: number; limit?: number }): Promise<ThreadListResult>;
     delete(threadId: string): Promise<void>;
     rename(threadId: string, title: string): Promise<void>;
+    messages(
+      threadId: string,
+      params?: { page?: number; limit?: number },
+    ): Promise<MessageListResult>;
   };
 }
 

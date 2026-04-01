@@ -1,30 +1,46 @@
-import type { AppInstance } from "@browser-agent/server";
+import {
+  type AppInstance,
+  createThread,
+  deleteThread,
+  getThread,
+  listMessages,
+  listThreads,
+  renameThread,
+} from "@browser-agent/server";
 import { ipcMain } from "electron";
 
 export function setupThreadsIPC(appPromise: Promise<AppInstance>): void {
+  ipcMain.handle("threads:create", async () => {
+    const app = await appPromise;
+    return createThread(app);
+  });
+
+  ipcMain.handle("threads:get", async (_event, threadId: string) => {
+    const app = await appPromise;
+    return getThread(app, threadId);
+  });
+
   ipcMain.handle("threads:list", async () => {
     const app = await appPromise;
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (!memoryStore) return [];
-    const result = await memoryStore.listThreads({
-      filter: { resourceId: app.getResourceId() },
-      orderBy: { field: "updatedAt", direction: "DESC" },
-      perPage: false,
-    });
+    const result = await listThreads(app, { limit: false });
     return result.threads;
   });
 
+  ipcMain.handle(
+    "threads:messages",
+    async (_event, threadId: string, page?: number, limit?: number) => {
+      const app = await appPromise;
+      return listMessages(app, { threadId, page, limit });
+    },
+  );
+
   ipcMain.handle("threads:delete", async (_event, threadId: string) => {
     const app = await appPromise;
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (memoryStore) await memoryStore.deleteThread({ threadId });
+    await deleteThread(app, threadId);
   });
 
   ipcMain.handle("threads:rename", async (_event, threadId: string, title: string) => {
     const app = await appPromise;
-    const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-    if (memoryStore) {
-      await memoryStore.updateThread({ id: threadId, title, metadata: {} });
-    }
+    await renameThread(app, threadId, title);
   });
 }
