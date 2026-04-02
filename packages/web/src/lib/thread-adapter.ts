@@ -1,4 +1,5 @@
 import type { RemoteThreadListAdapter } from "@assistant-ui/react";
+import { uuidv7 } from "uuidv7";
 import { api } from "../api/adapter";
 
 export const PAGE_SIZE = 20;
@@ -72,9 +73,9 @@ export function createThreadListAdapter(): {
     },
 
     async initialize(localId: string) {
-      const thread = await api.threads.create();
-      threadIdMap.set(localId, thread.id);
-      return { remoteId: thread.id, externalId: thread.id };
+      const id = uuidv7();
+      threadIdMap.set(localId, id);
+      return { remoteId: id, externalId: id };
     },
 
     async rename(remoteId, title) {

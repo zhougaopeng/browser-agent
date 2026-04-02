@@ -5,79 +5,132 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm dev          # start Electron app in dev mode (hot reload)
-pnpm build        # build all three processes (main, preload, renderer)
-pnpm package      # package distributable with electron-builder
-pnpm test         # run all tests once
-pnpm test:watch   # run tests in watch mode
-pnpm lint         # biome check (lint + format check)
-pnpm lint:fix     # biome check --fix (auto-fix lint issues)
-pnpm format       # biome format --fix (auto-format)
+pnpm dev            # start web (vite:5173) + Electron concurrently
+pnpm dev:server     # standalone server only (tsx watch, port 3100)
+pnpm dev:web        # web frontend only (vite)
+pnpm build          # build server (tsup) then web (vite build)
+pnpm package        # build all, copy web/dist into electron, then electron-builder
+pnpm test           # vitest run (all packages)
+pnpm test:watch     # vitest watch
+pnpm lint           # biome check (lint + format)
+pnpm lint:fix       # biome check --fix
+pnpm format         # biome format --fix
 ```
 
 Run a single test file:
 ```bash
-pnpm vitest run tests/main/agent/overlay.test.ts
+pnpm vitest run packages/server/tests/path/to/test.ts
 ```
 
-Test files live in `tests/` mirroring `src/main/` and `src/renderer/` structure.
+Test files live in `packages/*/tests/` mirroring `src/` structure.
+
+## Monorepo Structure
+
+pnpm workspace with three packages:
+
+```
+packages/
+├── server/    # @browser-agent/server — Node.js backend (library + standalone HTTP)
+├── web/       # @browser-agent/web   — React 19 + assistant-ui + Tailwind v4 frontend
+└── electron/  # @browser-agent/electron — Electron shell (imports server in-process)
+```
+
+- **server** is both a library (imported by Electron) and a standalone HTTP server (port 3100)
+- **web** can run against Electron's custom protocol or standalone against the HTTP server
+- **electron** is a thin shell: it loads the server in-process and serves the web frontend
+
+### Package Dependencies
+
+```
+electron → server (workspace:*)
+web → (standalone, connects via HTTP or agent:// protocol)
+```
 
 ## Architecture
 
-Electron app with three processes:
+### Server (`packages/server`)
+
+Central factory: `createApp()` in `src/index.ts` returns an `AppInstance` with all shared state.
 
 ```
 src/
-├── main/          # Node.js Main Process — all backend logic
-│   ├── index.ts   # entry: protocol registration, app lifecycle, chat endpoint
-│   ├── windows.ts # BrowserWindow creation
-│   ├── agent/     # Mastra agent, MCP client, overlay, suspend tool
-│   ├── ipc/       # IPC handlers (settings only)
-│   ├── skills/    # SkillManager, read_skill tool
-│   ├── store/     # electron-store settings persistence
-│   └── paths.ts   # shared path constants
-├── preload/
-│   └── index.ts   # contextBridge — exposes window.electronAPI.settings
-└── renderer/      # React 19 + Tailwind CSS 4
-    ├── App.tsx
-    ├── components/
-    │   ├── chat/      # ChatPanel, MessageBubble, ActionCard, WaitCard, etc.
-    │   ├── settings/  # ModelConfig, BrowserConfig, SettingsPanel
-    │   ├── skills/    # SkillsPanel, SkillEditor, SkillImport
-    │   └── layout/    # TitleBar (frameless), Sidebar
-    └── stores/
-        └── settings.ts  # Zustand — only for app settings, chat state is in useChat
+├── index.ts          # createApp() factory, AppInstance type, all re-exports
+├── server.ts         # standalone HTTP server (port 3100)
+├── agent/
+│   ├── browser-agent.ts   # createBrowserAgent(): Mastra Agent with memory, 50 maxSteps
+│   ├── browser-tools.ts   # MCP client init, auto-restart on browser crash
+│   ├── mastra.ts          # createMastra(): LibSQLStore + PinoLogger
+│   ├── overlay.ts         # OverlayController: injects JS into Chrome pages
+│   ├── system-prompt.ts   # System prompt with tool reference + canvas mode
+│   ├── title-agent.ts     # Generates thread titles
+│   ├── wait-for-user.ts   # suspend/resume for human-in-the-loop
+│   └── tracer.ts          # JSONL trace files per runId
+├── api/
+│   ├── chat.ts            # createChatStream/createChatResponse via handleChatStream
+│   ├── settings.ts        # getSettings/updateSetting + rebuild on change
+│   ├── threads.ts         # CRUD for threads/messages via Mastra memory (uuidv7)
+│   └── title.ts           # generateTitle via titleAgent
+├── routes/                # HTTP route handlers (standalone server mode)
+├── skills/                # SkillManager scans ~/.browser-agent/skills/*/SKILL.md
+└── store/
+    └── settings.ts        # AppSettings type + conf store
+```
+
+**Agent stack**: Mastra orchestrates `browserAgent` with `@playwright/mcp` for browser automation, libsql for memory, and a `wait_for_user` suspend tool.
+
+**Browser tool lifecycle**: `browser-tools.ts` wraps MCP tools with auto-restart — if a "browser closed" error is detected, the MCP client restarts automatically and retries.
+
+### Web (`packages/web`)
+
+```
+src/
+├── api/
+│   ├── adapter.ts     # ApiAdapter interface + auto-detect Electron vs HTTP
+│   ├── electron.ts    # agent:// protocol + IPC adapter
+│   └── http.ts        # localhost:3100 REST adapter
+├── components/
+│   ├── RuntimeProvider.tsx    # AssistantRuntimeProvider + thread list runtime
+│   ├── assistant-ui/          # Thread, ThreadList, MarkdownText, etc.
+│   ├── chat/                  # WelcomePage
+│   ├── settings/              # ModelConfig, BrowserConfig, SettingsPanel
+│   ├── skills/                # SkillsPanel, SkillEditor
+│   └── ui/                    # Shared primitives
+├── lib/
+│   ├── browser-tool-uis.tsx   # Custom tool renderers for Playwright actions
+│   ├── history-adapter.ts     # ServerHistoryAdapter: loads persisted messages
+│   ├── thread-adapter.ts      # RemoteThreadListAdapter with threadIdMap
+│   └── thread-list-pagination.tsx  # Infinite scroll (uses AUI internals)
+└── stores/
+    └── settings.ts            # Zustand (settings only)
+```
+
+**RuntimeProvider** is the central wiring: combines `useChat` (`@ai-sdk/react`) with `useAISDKRuntime` (`@assistant-ui/react-ai-sdk`) and `useRemoteThreadListRuntime`.
+
+**Dual-mode API**: `ApiAdapter` detects `window.electronAPI` at import time. Electron mode uses `agent://` protocol + IPC; standalone mode uses HTTP REST to `localhost:3100`.
+
+### Electron (`packages/electron`)
+
+Thin shell that imports `createApp` from server and serves the web frontend:
+
+```
+src/
+├── main/
+│   ├── index.ts           # App lifecycle, protocol handler for agent://chat
+│   ├── windows.ts         # Frameless BrowserWindow (960x720)
+│   ├── frontend-loader.ts # Loads from dev URL, userData, or packaged resources
+│   └── ipc/               # settings + threads IPC handlers
+└── preload/
+    └── index.ts           # contextBridge → window.electronAPI.settings + .threads
 ```
 
 ### Communication
 
-| Channel | Mechanism | Usage |
-|---------|-----------|-------|
-| Chat streaming | `protocol.handle("agent://")` | Renderer `fetch("agent://chat", POST)` → Main streams AI SDK DataStream back |
-| Settings | IPC (`ipcMain.handle` / `ipcRenderer.invoke`) | `settings:get`, `settings:set`, `settings:changed` (push) |
+| Mode | Chat | Settings | Threads |
+|------|------|----------|---------|
+| Electron | `agent://chat` (custom protocol) | IPC (`ipcMain.handle`) | IPC |
+| Standalone | `POST http://localhost:3100/api/chat` | HTTP REST | HTTP REST |
 
-The renderer's `useChat` hook points its `api` to `"agent://chat"`. No localhost HTTP server is used.
-
-### Agent Stack
-
-- **Mastra** orchestrates the `browserAgent` with memory (libsql via `mastra.db`)
-- **Playwright MCP** client (`@playwright/mcp`) launches an independent Chrome window; all browser automation goes through MCP tool calls
-- **`wait_for_user`** tool calls Mastra's `suspend()` for human-in-the-loop; `autoResumeSuspendedTools: true` handles resume automatically
-- **Overlay**: `overlay-init.js` is injected into every Chrome page via `--init-script`; `overlayController` switches CSS states by calling `browser_evaluate` in `onStepFinish`
-- **Skills**: `SkillManager` scans `~/.browser-agent/skills/` for `SKILL.md` files at startup, builds a lightweight name+description catalog injected into the system prompt, and provides a `read_skill` tool for the agent to load full skill content on demand
-
-### Key Data Flows
-
-**Chat request:**
-1. `ChatPanel` (useChat) → `fetch("agent://chat", { messages, threadId })`
-2. `protocol.handle` in `main/index.ts` calls `agentInstance.stream()`
-3. Mastra calls LLM → MCP browser tools → `onStepFinish` updates overlay
-4. DataStream response flows back to `useChat` for streaming render
-
-**Settings change:**
-1. SettingsPanel → `window.electronAPI.settings.set(key, value)`
-2. IPC handler updates `electron-store`, pushes `settings:changed` to renderer
-3. If browser settings changed, MCP client is torn down and rebuilt
+Chat uses SSE streaming via `handleChatStream` from `@mastra/ai-sdk` (Vercel AI SDK v6 `UIMessageStream` protocol).
 
 ### AppSettings Shape
 
@@ -89,9 +142,13 @@ interface AppSettings {
 }
 ```
 
+Defaults: provider=openai, name=gpt-4.1, headless=false, browser=chrome, skills=~/.browser-agent/skills.
+
 ## Code Style
 
 Biome is the single tool for linting and formatting (no ESLint, no Prettier):
 - 2-space indent, double quotes, semicolons always, trailing commas, 100-char line width
 - `noExplicitAny` is an **error** — avoid `any`; use `unknown` + type guards
-- Three separate `tsconfig` files: root (`tsconfig.json`), `tsconfig.node.json` (main + preload), `tsconfig.web.json` (renderer)
+- Husky pre-commit hook runs lint-staged (biome check + format on staged `*.{ts,tsx}` and format on `*.{json,css}`)
+- Root `tsconfig.json` uses project references to all three sub-packages
+- CSS: Tailwind v4 with cssModules + `@tailwindcss/vite` plugin
