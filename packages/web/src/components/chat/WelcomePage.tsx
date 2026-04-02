@@ -86,7 +86,6 @@ const WelcomeComposer: FC<{ onSend?: () => void }> = ({ onSend }) => {
     lockRef.current = true;
     setIsSending(true);
     try {
-      await aui.threadListItem().initialize();
       aui.composer().send();
       onSend?.();
     } catch {
