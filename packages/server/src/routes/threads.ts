@@ -7,6 +7,7 @@ import {
   listThreads,
   renameThread,
 } from "../api";
+import { generateTitle } from "../api/title";
 import type { AppInstance } from "../index";
 
 export async function handleThreadsRoute(
@@ -46,6 +47,21 @@ export async function handleThreadsRoute(
     const result = await listThreads(app, { limit, page });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (req.method === "POST" && threadId === "generate-title") {
+    console.log("[generate-title] request received");
+    const body = await readBody(req);
+    const { messages, threadId: tid } = JSON.parse(body) as {
+      messages: { role: string; content: string }[];
+      threadId?: string;
+    };
+    console.log("[generate-title] messages:", messages.length, "threadId:", tid);
+    const title = await generateTitle(app, messages, tid);
+    console.log("[generate-title] result:", title);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ title }));
     return;
   }
 

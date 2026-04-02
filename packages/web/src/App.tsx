@@ -32,6 +32,7 @@ export function App() {
                 <ThreadList
                   onNewThread={() => setView("home")}
                   onSelectThread={() => setView("chat")}
+                  onDeleteThread={() => setView("home")}
                   slotAfterNew={recentLabel}
                 />
               </div>

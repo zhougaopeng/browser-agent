@@ -5,9 +5,9 @@ import { PinoLogger } from "@mastra/loggers";
 import { STORAGE_ID } from "../constants";
 import type { AppPaths } from "../paths";
 
-export function createMastra(browserAgent: Agent, paths: AppPaths): Mastra {
+export function createMastra(browserAgent: Agent, titleAgent: Agent, paths: AppPaths): Mastra {
   return new Mastra({
-    agents: { browserAgent },
+    agents: { browserAgent, titleAgent },
     storage: new LibSQLStore({
       id: STORAGE_ID,
       url: `file:${paths.db}`,

@@ -4,7 +4,7 @@ import type { AppSettings } from "../env";
 
 function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
   const keys = path.split(".");
-  const last = keys.pop()!;
+  const last = keys.pop() ?? "";
   let cur = obj;
   for (const k of keys) {
     cur[k] = { ...(cur[k] as Record<string, unknown>) };

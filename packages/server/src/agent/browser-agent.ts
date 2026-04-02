@@ -19,7 +19,7 @@ export function createBrowserAgent(browserTools: ToolsInput, modelId: string): A
     memory: new Memory({
       options: {
         lastMessages: 20,
-        generateTitle: true,
+        generateTitle: false,
       },
     }),
     defaultOptions: {

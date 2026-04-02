@@ -1,5 +1,5 @@
 import type { ThreadHistoryAdapter } from "@assistant-ui/react";
-import { useAssistantApi } from "@assistant-ui/react";
+import { useAui } from "@assistant-ui/react";
 import type { UIMessage } from "ai";
 import { useState } from "react";
 import { api } from "../api/adapter";
@@ -115,9 +115,9 @@ function convertPartsToUI(parts: ServerMessagePart[]): UIMessagePart[] {
 }
 
 class ServerHistoryAdapter {
-  private aui: ReturnType<typeof useAssistantApi>;
+  private aui: ReturnType<typeof useAui>;
 
-  constructor(aui: ReturnType<typeof useAssistantApi>) {
+  constructor(aui: ReturnType<typeof useAui>) {
     this.aui = aui;
   }
 
@@ -158,7 +158,7 @@ class ServerHistoryAdapter {
 }
 
 export function useServerHistoryAdapter(): ThreadHistoryAdapter {
-  const aui = useAssistantApi();
+  const aui = useAui();
   const [adapter] = useState(
     () => new ServerHistoryAdapter(aui) as unknown as ThreadHistoryAdapter,
   );

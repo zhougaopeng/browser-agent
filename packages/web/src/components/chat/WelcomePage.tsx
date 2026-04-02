@@ -1,6 +1,6 @@
-import { ComposerPrimitive } from "@assistant-ui/react";
+import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { ArrowUpIcon, GlobeIcon, MousePointerClickIcon, SearchIcon } from "lucide-react";
-import type { FC } from "react";
+import { type FC, type FormEvent, useCallback, useRef, useState } from "react";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 
 interface WelcomePageProps {
@@ -14,6 +14,15 @@ const SUGGESTIONS = [
 ];
 
 export const WelcomePage: FC<WelcomePageProps> = ({ onStartChat }) => {
+  const aui = useAui();
+
+  const handleSuggestionClick = useCallback(
+    (text: string) => {
+      aui.composer().setText(text);
+    },
+    [aui],
+  );
+
   return (
     <div className="flex h-full flex-col items-center justify-center px-6">
       <div className="flex w-full max-w-2xl flex-col items-center gap-10">
@@ -27,9 +36,14 @@ export const WelcomePage: FC<WelcomePageProps> = ({ onStartChat }) => {
           </p>
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-2">
           {SUGGESTIONS.map((s) => (
-            <SuggestionCard key={s.text} icon={s.icon} text={s.text} />
+            <SuggestionCard
+              key={s.text}
+              icon={s.icon}
+              text={s.text}
+              onClick={handleSuggestionClick}
+            />
           ))}
         </div>
 
@@ -42,24 +56,55 @@ export const WelcomePage: FC<WelcomePageProps> = ({ onStartChat }) => {
 const SuggestionCard: FC<{
   icon: FC<{ className?: string }>;
   text: string;
-}> = ({ icon: Icon, text }) => {
+  onClick: (text: string) => void;
+}> = ({ icon: Icon, text, onClick }) => {
   return (
-    <ComposerPrimitive.Root asChild>
-      <div className="group flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 bg-card p-3.5 transition-all hover:border-primary/30 hover:shadow-sm">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-        <p className="text-sm leading-snug text-muted-foreground group-hover:text-foreground">
-          {text}
-        </p>
+    <button
+      type="button"
+      onClick={() => onClick(text)}
+      title={text}
+      className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-card p-3.5 text-left transition-all hover:border-primary/30 hover:shadow-sm"
+    >
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <Icon className="size-4 text-muted-foreground" />
       </div>
-    </ComposerPrimitive.Root>
+      <p className="text-sm leading-snug text-muted-foreground group-hover:text-foreground">
+        {text}
+      </p>
+    </button>
   );
 };
 
 const WelcomeComposer: FC<{ onSend?: () => void }> = ({ onSend }) => {
+  const aui = useAui();
+  const canSend = useAuiState((s) => !s.composer.isEmpty && !s.thread.isRunning);
+  const [isSending, setIsSending] = useState(false);
+  const lockRef = useRef(false);
+
+  const handleSend = useCallback(async () => {
+    if (!canSend || lockRef.current) return;
+    lockRef.current = true;
+    setIsSending(true);
+    try {
+      await aui.threadListItem().initialize();
+      aui.composer().send();
+      onSend?.();
+    } catch {
+      lockRef.current = false;
+      setIsSending(false);
+    }
+  }, [aui, canSend, onSend]);
+
+  const handleSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      handleSend();
+    },
+    [handleSend],
+  );
+
   return (
-    <ComposerPrimitive.Root className="relative w-full">
+    <ComposerPrimitive.Root className="relative w-full" onSubmit={handleSubmit}>
       <div className="flex w-full flex-col gap-2 rounded-2xl border bg-background p-3 shadow-sm transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20">
         <ComposerPrimitive.Input
           placeholder="描述你想完成的操作..."
@@ -69,20 +114,19 @@ const WelcomeComposer: FC<{ onSend?: () => void }> = ({ onSend }) => {
           aria-label="Message input"
         />
         <div className="flex items-center justify-end">
-          <ComposerPrimitive.Send asChild>
-            <TooltipIconButton
-              tooltip="Send message"
-              side="bottom"
-              type="button"
-              variant="default"
-              size="icon"
-              className="size-8 rounded-full"
-              aria-label="Send message"
-              onClick={onSend}
-            >
-              <ArrowUpIcon className="size-4" />
-            </TooltipIconButton>
-          </ComposerPrimitive.Send>
+          <TooltipIconButton
+            tooltip="Send message"
+            side="bottom"
+            type="button"
+            variant="default"
+            size="icon"
+            className="size-8 rounded-full"
+            aria-label="Send message"
+            disabled={!canSend || isSending}
+            onClick={handleSend}
+          >
+            <ArrowUpIcon className="size-4" />
+          </TooltipIconButton>
         </div>
       </div>
     </ComposerPrimitive.Root>

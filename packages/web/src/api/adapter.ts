@@ -48,6 +48,10 @@ export interface ApiAdapter {
       threadId: string,
       params?: { page?: number; limit?: number },
     ): Promise<MessageListResult>;
+    generateTitle(
+      messages: { role: string; content: string }[],
+      threadId?: string,
+    ): Promise<{ title: string }>;
   };
 }
 

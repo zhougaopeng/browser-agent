@@ -1,12 +1,20 @@
 import { DefaultChatTransport } from "ai";
 import type { AppSettings } from "../env";
+import { threadIdMap } from "../lib/thread-adapter";
 import type { ApiAdapter } from "./adapter";
 
 const BASE = "http://localhost:3100/api";
 
 export function createHttpAdapter(): ApiAdapter {
   return {
-    chatTransport: new DefaultChatTransport({ api: `${BASE}/chat` }),
+    chatTransport: new DefaultChatTransport({
+      api: `${BASE}/chat`,
+      prepareSendMessagesRequest({ id, messages, body, trigger, messageId }) {
+        return {
+          body: { ...body, id: threadIdMap.get(id) ?? id, messages, trigger, messageId },
+        };
+      },
+    }),
     settings: {
       get: () => fetch(`${BASE}/settings`).then((r) => r.json()) as Promise<AppSettings>,
       set: (key, value) =>
@@ -45,6 +53,12 @@ export function createHttpAdapter(): ApiAdapter {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title }),
         }).then(() => {}),
+      generateTitle: (messages, threadId) =>
+        fetch(`${BASE}/threads/generate-title`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages, threadId }),
+        }).then((r) => r.json()),
     },
   };
 }

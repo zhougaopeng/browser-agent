@@ -4,6 +4,7 @@ import { createBrowserAgent } from "./agent/browser-agent";
 import { getBrowserTools, getMCPClient, initBrowserTools } from "./agent/browser-tools";
 import { createMastra } from "./agent/mastra";
 import { overlayController } from "./agent/overlay";
+import { createTitleAgent } from "./agent/title-agent";
 import { getDefaultConfig, type ServerConfig } from "./config";
 import { type AppPaths, createPaths, getResourceId } from "./paths";
 import { skillManager } from "./skills/manager";
@@ -53,7 +54,8 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
 
     const modelId = `${settings.model.provider}/${settings.model.name}`;
     const agent = createBrowserAgent(getBrowserTools(), modelId);
-    currentMastra = createMastra(agent, paths);
+    const titleAgent = createTitleAgent(modelId);
+    currentMastra = createMastra(agent, titleAgent, paths);
     console.log(`[server] Agent rebuilt with model: ${modelId}`);
   }
 
