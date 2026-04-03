@@ -30,6 +30,7 @@ export interface MessageRecord {
 export interface MessageListResult {
   messages: MessageRecord[];
   hasMore: boolean;
+  nextCursor: string | null;
 }
 
 export interface ApiAdapter {
@@ -46,7 +47,7 @@ export interface ApiAdapter {
     rename(threadId: string, title: string): Promise<void>;
     messages(
       threadId: string,
-      params?: { page?: number; limit?: number },
+      params?: { cursor?: string; limit?: number },
     ): Promise<MessageListResult>;
     generateTitle(
       messages: { role: string; content: string }[],

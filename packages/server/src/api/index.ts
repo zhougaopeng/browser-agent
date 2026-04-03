@@ -15,3 +15,4 @@ export {
   listThreads,
   renameThread,
 } from "./threads";
+export { generateTitle } from "./title";

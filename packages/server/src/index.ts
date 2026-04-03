@@ -24,6 +24,7 @@ export interface AppInstance {
 export async function createApp(config?: Partial<ServerConfig>): Promise<AppInstance> {
   const cfg = { ...getDefaultConfig(), ...config };
   const paths = createPaths(cfg.dataDir);
+  console.log("[server] Paths created:", paths);
   const settingsStore = createSettingsStore(cfg.dataDir);
 
   let currentMastra!: Mastra;
@@ -53,10 +54,13 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
     }
 
     const modelId = `${settings.model.provider}/${settings.model.name}`;
+    const titleModelId = settings.model.titleModelName
+      ? `${settings.model.provider}/${settings.model.titleModelName}`
+      : modelId;
     const agent = createBrowserAgent(getBrowserTools(), modelId);
-    const titleAgent = createTitleAgent(modelId);
+    const titleAgent = createTitleAgent(titleModelId);
     currentMastra = createMastra(agent, titleAgent, paths);
-    console.log(`[server] Agent rebuilt with model: ${modelId}`);
+    console.log(`[server] Agent rebuilt with model: ${modelId}, titleModel: ${titleModelId}`);
   }
 
   await rebuild();
@@ -86,6 +90,7 @@ export {
   createChatStream,
   createThread,
   deleteThread,
+  generateTitle,
   getSettings,
   getThread,
   type ListMessagesParams,

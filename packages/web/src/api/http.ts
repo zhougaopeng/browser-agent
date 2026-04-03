@@ -41,7 +41,7 @@ export function createHttpAdapter(): ApiAdapter {
       },
       messages: (id, params) => {
         const qs = new URLSearchParams();
-        if (params?.page) qs.set("page", String(params.page));
+        if (params?.cursor) qs.set("cursor", params.cursor);
         if (params?.limit) qs.set("limit", String(params.limit));
         const q = qs.toString();
         return fetch(`${BASE}/threads/${id}/messages${q ? `?${q}` : ""}`).then((r) => r.json());

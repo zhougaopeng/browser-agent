@@ -12,14 +12,17 @@ const api = {
     },
   },
   threads: {
-    create: () => ipcRenderer.invoke("threads:create"),
+    create: (params?: { title?: string }) => ipcRenderer.invoke("threads:create", params),
     get: (threadId: string) => ipcRenderer.invoke("threads:get", threadId),
-    list: () => ipcRenderer.invoke("threads:list"),
+    list: (params?: { limit?: number; page?: number }) =>
+      ipcRenderer.invoke("threads:list", params),
     messages: (threadId: string, params?: { page?: number; limit?: number }) =>
-      ipcRenderer.invoke("threads:messages", threadId, params?.page, params?.limit),
+      ipcRenderer.invoke("threads:messages", threadId, params),
     delete: (threadId: string) => ipcRenderer.invoke("threads:delete", threadId),
     rename: (threadId: string, title: string) =>
       ipcRenderer.invoke("threads:rename", threadId, title),
+    generateTitle: (messages: { role: string; content: string }[], threadId?: string) =>
+      ipcRenderer.invoke("threads:generateTitle", messages, threadId),
   },
 };
 

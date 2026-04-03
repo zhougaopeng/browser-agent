@@ -3,7 +3,6 @@ import { threadIdMap } from "../lib/thread-adapter";
 import type { ApiAdapter } from "./adapter";
 
 export function createElectronAdapter(): ApiAdapter {
-  const electronThreads = window.electronAPI.threads;
   return {
     chatTransport: new DefaultChatTransport({
       api: "agent://chat",
@@ -14,9 +13,6 @@ export function createElectronAdapter(): ApiAdapter {
       },
     }),
     settings: window.electronAPI.settings,
-    threads: {
-      ...electronThreads,
-      generateTitle: () => Promise.resolve({ title: "New Thread" }),
-    } as unknown as ApiAdapter["threads"],
+    threads: window.electronAPI.threads,
   };
 }

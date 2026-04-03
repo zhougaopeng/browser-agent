@@ -3,6 +3,7 @@ export interface AppSettings {
     provider: string;
     name: string;
     apiKey: string;
+    titleModelName: string;
   };
   browser: {
     headless: boolean;
@@ -21,7 +22,7 @@ interface ElectronAPI {
     set(key: string, value: unknown): Promise<void>;
   };
   threads: {
-    create(params?: { title?: string }): Promise<{ id: string }>;
+    create(params?: { title?: string }): Promise<import("./api/adapter").ThreadRecord>;
     get(threadId: string): Promise<import("./api/adapter").ThreadRecord>;
     list(params?: {
       page?: number;
@@ -31,8 +32,12 @@ interface ElectronAPI {
     rename(threadId: string, title: string): Promise<void>;
     messages(
       threadId: string,
-      params?: { page?: number; limit?: number },
+      params?: { cursor?: string; limit?: number },
     ): Promise<import("./api/adapter").MessageListResult>;
+    generateTitle(
+      messages: { role: string; content: string }[],
+      threadId?: string,
+    ): Promise<{ title: string }>;
   };
 }
 

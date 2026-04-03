@@ -22,8 +22,8 @@ export async function handleThreadsRoute(
 
   if (req.method === "GET" && threadId && subResource === "messages") {
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 40, 1), 200);
-    const page = Math.max(Number(url.searchParams.get("page")) || 0, 0);
-    const result = await listMessages(app, { threadId, limit, page });
+    const cursor = url.searchParams.get("cursor") ?? undefined;
+    const result = await listMessages(app, { threadId, limit, cursor });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(result));
     return;
@@ -42,8 +42,9 @@ export async function handleThreadsRoute(
   }
 
   if (req.method === "GET" && !threadId) {
-    const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 20, 1), 100);
-    const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
+    const rawLimit = url.searchParams.get("limit");
+    const limit = rawLimit ? Math.min(Math.max(Math.floor(Number(rawLimit)), 1), 100) : false;
+    const page = limit ? Math.max(Math.floor(Number(url.searchParams.get("page")) || 1), 1) : 0;
     const result = await listThreads(app, { limit, page });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(result));
@@ -66,7 +67,9 @@ export async function handleThreadsRoute(
   }
 
   if (req.method === "POST" && !threadId) {
-    const result = await createThread(app);
+    const body = await readBody(req);
+    const params = body ? (JSON.parse(body) as { title?: string }) : undefined;
+    const result = await createThread(app, params);
     res.writeHead(201, { "Content-Type": "application/json" });
     res.end(JSON.stringify(result));
     return;

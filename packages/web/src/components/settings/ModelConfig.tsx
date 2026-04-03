@@ -41,6 +41,17 @@ export function ModelConfig({ settings }: ModelConfigProps) {
         </label>
 
         <label className="block">
+          <span className="mb-1 block text-xs text-gray-500">Title Model Name</span>
+          <input
+            type="text"
+            value={settings.model.titleModelName ?? ""}
+            onChange={(e) => update("model.titleModelName", e.target.value)}
+            placeholder={settings.model.name || "留空则使用主模型"}
+            className="w-full rounded-lg border border-border bg-home-input-bg px-3 py-2 text-sm outline-none focus:border-accent/40"
+          />
+        </label>
+
+        <label className="block">
           <span className="mb-1 block text-xs text-gray-500">API Key</span>
           <input
             type="password"

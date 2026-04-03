@@ -7,6 +7,7 @@ import { handleThreadsRoute } from "./routes/threads";
 const PORT = Number(process.env.PORT) || 3100;
 
 async function main() {
+  console.log("[server] Starting Mastra agent... DATA_DIR: ", process.env.DATA_DIR);
   const app = await createApp(process.env.DATA_DIR ? { dataDir: process.env.DATA_DIR } : {});
   console.log("[server] Mastra agent initialized");
 

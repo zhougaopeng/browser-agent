@@ -2,6 +2,7 @@ import {
   type AppInstance,
   createThread,
   deleteThread,
+  generateTitle,
   getThread,
   listMessages,
   listThreads,
@@ -10,9 +11,9 @@ import {
 import { ipcMain } from "electron";
 
 export function setupThreadsIPC(appPromise: Promise<AppInstance>): void {
-  ipcMain.handle("threads:create", async () => {
+  ipcMain.handle("threads:create", async (_event, params?: { title?: string }) => {
     const app = await appPromise;
-    return createThread(app);
+    return createThread(app, params);
   });
 
   ipcMain.handle("threads:get", async (_event, threadId: string) => {
@@ -20,17 +21,18 @@ export function setupThreadsIPC(appPromise: Promise<AppInstance>): void {
     return getThread(app, threadId);
   });
 
-  ipcMain.handle("threads:list", async () => {
+  ipcMain.handle("threads:list", async (_event, params?: { limit?: number; page?: number }) => {
     const app = await appPromise;
-    const result = await listThreads(app, { limit: false });
-    return result.threads;
+    const limit = params?.limit ? Math.min(Math.max(Math.floor(params.limit), 1), 100) : false;
+    const page = limit ? Math.max(Math.floor(params?.page ?? 1), 1) : 0;
+    return listThreads(app, { limit, page });
   });
 
   ipcMain.handle(
     "threads:messages",
-    async (_event, threadId: string, page?: number, limit?: number) => {
+    async (_event, threadId: string, params?: { cursor?: string; limit?: number }) => {
       const app = await appPromise;
-      return listMessages(app, { threadId, page, limit });
+      return listMessages(app, { threadId, ...params });
     },
   );
 
@@ -43,4 +45,13 @@ export function setupThreadsIPC(appPromise: Promise<AppInstance>): void {
     const app = await appPromise;
     await renameThread(app, threadId, title);
   });
+
+  ipcMain.handle(
+    "threads:generateTitle",
+    async (_event, messages: { role: string; content: string }[], threadId?: string) => {
+      const app = await appPromise;
+      const title = await generateTitle(app, messages, threadId);
+      return { title };
+    },
+  );
 }

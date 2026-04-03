@@ -9,16 +9,17 @@ export interface ListThreadsParams {
 export interface ListMessagesParams {
   threadId: string;
   limit?: number;
-  page?: number;
+  /** Cursor: the id of the last message from the previous page */
+  cursor?: string;
 }
 
-export async function createThread(app: AppInstance) {
+export async function createThread(app: AppInstance, params?: { title?: string }) {
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
   const threadId = uuidv7();
   const thread = {
     id: threadId,
     resourceId: app.getResourceId(),
-    title: "",
+    title: params?.title ?? "",
     createdAt: new Date(),
     updatedAt: new Date(),
     metadata: {},
@@ -41,7 +42,7 @@ export async function listThreads(app: AppInstance, params?: ListThreadsParams) 
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
   if (!memoryStore) return { threads: [], hasMore: false };
 
-  const limit = params?.limit ?? 20;
+  const limit = params?.limit ?? false;
   const page = Math.max((params?.page ?? 1) - 1, 0);
 
   const result = await memoryStore.listThreads({
@@ -59,19 +60,34 @@ export async function listThreads(app: AppInstance, params?: ListThreadsParams) 
 
 export async function listMessages(app: AppInstance, params: ListMessagesParams) {
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-  if (!memoryStore) return { messages: [], hasMore: false };
+  if (!memoryStore) return { messages: [], hasMore: false, nextCursor: null };
 
   const limit = Math.min(Math.max(params.limit ?? 40, 1), 200);
-  const page = params.page ?? 0;
+
+  let cursorDate: Date | undefined;
+  if (params.cursor) {
+    const cursorMsg = await memoryStore.listMessagesById({ messageIds: [params.cursor] });
+    const msg = cursorMsg.messages[0];
+    if (msg) {
+      cursorDate =
+        msg.createdAt instanceof Date
+          ? msg.createdAt
+          : new Date(msg.createdAt as unknown as string);
+    }
+  }
 
   const result = await memoryStore.listMessages({
     threadId: params.threadId,
     perPage: limit,
-    page,
     orderBy: { field: "createdAt", direction: "ASC" },
+    ...(cursorDate ? { filter: { dateRange: { start: cursorDate, startExclusive: true } } } : {}),
   });
 
-  return { messages: result.messages, hasMore: result.hasMore };
+  const messages = result.messages;
+  const lastMsg = messages[messages.length - 1];
+  const nextCursor = lastMsg ? lastMsg.id : null;
+
+  return { messages, hasMore: result.hasMore, nextCursor };
 }
 
 export async function deleteThread(app: AppInstance, threadId: string) {

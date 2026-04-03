@@ -8,7 +8,6 @@ import {
 import { CheckIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useThreadListPagination } from "@/lib/thread-list-pagination";
 
 interface ThreadListProps {
   onNewThread?: () => void;
@@ -34,7 +33,6 @@ export const ThreadList: FC<ThreadListProps> = ({
         <ThreadListPrimitive.Items>
           {() => <ThreadListItem onClick={onSelectThread} onDelete={onDeleteThread} />}
         </ThreadListPrimitive.Items>
-        <LoadMoreSentinel />
       </AuiIf>
     </ThreadListPrimitive.Root>
   );
@@ -198,36 +196,6 @@ const ThreadListItemActions: FC<{ onEdit: () => void; onDelete?: () => void }> =
         <TrashIcon className="size-4" />
         <span className="sr-only">删除</span>
       </button>
-    </div>
-  );
-};
-
-const LoadMoreSentinel: FC = () => {
-  const { loadMore, hasMore, isLoadingMore } = useThreadListPagination();
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          loadMore();
-        }
-      },
-      { threshold: 0 },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore, hasMore]);
-
-  if (!hasMore) return null;
-
-  return (
-    <div ref={sentinelRef} className="flex h-9 items-center justify-center">
-      {isLoadingMore && <Skeleton className="h-4 w-24" />}
     </div>
   );
 };

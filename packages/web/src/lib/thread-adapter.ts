@@ -2,19 +2,12 @@ import type { RemoteThreadListAdapter } from "@assistant-ui/react";
 import { uuidv7 } from "uuidv7";
 import { api } from "../api/adapter";
 
-export const PAGE_SIZE = 20;
-
 /**
  * Maps assistant-ui local thread IDs to server-side thread IDs.
  * Populated synchronously when adapter.initialize() resolves, so the
  * chat transport can look up the correct server ID before React re-renders.
  */
 export const threadIdMap = new Map<string, string>();
-
-export interface ThreadListPaginationRefs {
-  limitRef: { current: number };
-  hasMoreRef: { current: boolean };
-}
 
 function createTitleStream(title: string): ReadableStream {
   return new ReadableStream({
@@ -52,17 +45,10 @@ function extractTextMessages(
   return result;
 }
 
-export function createThreadListAdapter(): {
-  adapter: RemoteThreadListAdapter;
-  paginationRefs: ThreadListPaginationRefs;
-} {
-  const limitRef = { current: PAGE_SIZE };
-  const hasMoreRef = { current: true };
-
+export function createThreadListAdapter(): RemoteThreadListAdapter {
   const adapter: RemoteThreadListAdapter = {
     async list() {
-      const data = await api.threads.list({ limit: limitRef.current });
-      hasMoreRef.current = data.hasMore;
+      const data = await api.threads.list();
       return {
         threads: data.threads.map((t) => ({
           remoteId: t.id,
@@ -119,5 +105,5 @@ export function createThreadListAdapter(): {
     },
   };
 
-  return { adapter, paginationRefs: { limitRef, hasMoreRef } };
+  return adapter;
 }

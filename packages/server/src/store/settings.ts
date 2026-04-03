@@ -12,6 +12,7 @@ export interface AppSettings {
     provider: string;
     name: string;
     apiKey: string;
+    titleModelName: string;
   };
   browser: BrowserConfig;
   skills: {
@@ -24,6 +25,7 @@ const defaults: AppSettings = {
     provider: "openai",
     name: "gpt-4.1",
     apiKey: "",
+    titleModelName: "",
   },
   browser: {
     headless: false,
