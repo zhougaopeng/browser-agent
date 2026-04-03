@@ -129,7 +129,7 @@ class ServerHistoryAdapter {
         if (!remoteId) return { messages: [] };
 
         try {
-          const data = await api.threads.messages(remoteId, { limit: 200 });
+          const data = await api.threads.messages(remoteId, { limit: 40 });
           const serverMsgs = (data.messages ?? []) as unknown as ServerMessage[];
           if (serverMsgs.length === 0) return { messages: [] };
 

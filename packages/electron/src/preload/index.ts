@@ -16,7 +16,7 @@ const api = {
     get: (threadId: string) => ipcRenderer.invoke("threads:get", threadId),
     list: (params?: { limit?: number; page?: number }) =>
       ipcRenderer.invoke("threads:list", params),
-    messages: (threadId: string, params?: { page?: number; limit?: number }) =>
+    messages: (threadId: string, params?: { cursor?: string; limit?: number }) =>
       ipcRenderer.invoke("threads:messages", threadId, params),
     delete: (threadId: string) => ipcRenderer.invoke("threads:delete", threadId),
     rename: (threadId: string, title: string) =>

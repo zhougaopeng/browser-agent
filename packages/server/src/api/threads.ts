@@ -9,7 +9,7 @@ export interface ListThreadsParams {
 export interface ListMessagesParams {
   threadId: string;
   limit?: number;
-  /** Cursor: the id of the last message from the previous page */
+  /** Cursor: ISO timestamp of the last message's createdAt from the previous page */
   cursor?: string;
 }
 
@@ -60,34 +60,25 @@ export async function listThreads(app: AppInstance, params?: ListThreadsParams) 
 
 export async function listMessages(app: AppInstance, params: ListMessagesParams) {
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
-  if (!memoryStore) return { messages: [], hasMore: false, nextCursor: null };
+  if (!memoryStore) return { messages: [], hasMore: false };
 
   const limit = Math.min(Math.max(params.limit ?? 40, 1), 200);
 
-  let cursorDate: Date | undefined;
-  if (params.cursor) {
-    const cursorMsg = await memoryStore.listMessagesById({ messageIds: [params.cursor] });
-    const msg = cursorMsg.messages[0];
-    if (msg) {
-      cursorDate =
-        msg.createdAt instanceof Date
-          ? msg.createdAt
-          : new Date(msg.createdAt as unknown as string);
-    }
-  }
+  // cursor 是时间戳 ISO 字符串，直接解析，无需额外查询
+  // 始终用 end 边界 + DESC 取 cursor 之前最近的 N 条，再翻转为 ASC 展示顺序
+  const cursorDate = params.cursor ? new Date(params.cursor) : new Date();
+  const dateFilter = { dateRange: { end: cursorDate, endExclusive: !!params.cursor } };
 
   const result = await memoryStore.listMessages({
     threadId: params.threadId,
     perPage: limit,
-    orderBy: { field: "createdAt", direction: "ASC" },
-    ...(cursorDate ? { filter: { dateRange: { start: cursorDate, startExclusive: true } } } : {}),
+    orderBy: { field: "createdAt", direction: "DESC" },
+    filter: dateFilter,
   });
 
-  const messages = result.messages;
-  const lastMsg = messages[messages.length - 1];
-  const nextCursor = lastMsg ? lastMsg.id : null;
+  result.messages.reverse();
 
-  return { messages, hasMore: result.hasMore, nextCursor };
+  return { messages: result.messages, hasMore: result.hasMore };
 }
 
 export async function deleteThread(app: AppInstance, threadId: string) {
