@@ -2,13 +2,15 @@ import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
 import { handleChatStream } from "@mastra/ai-sdk";
 import { createUIMessageStreamResponse } from "ai";
 import { uuidv7 } from "uuidv7";
+import { buildThinkingProviderOptions, detectThinkingSupport } from "../agent/thinking-utils";
+
 import { AgentTracer } from "../agent/tracer";
 import type { AppInstance } from "../index";
 
 export type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
 
 export interface CreateChatStreamResult {
-  stream: ReturnType<typeof handleChatStream> extends Promise<infer T> ? T : never;
+  stream: Awaited<ReturnType<typeof handleChatStream>>;
   threadId: string;
 }
 
@@ -27,11 +29,39 @@ export async function createChatStream(
   tracer ??= new AgentTracer("browser-agent", app.paths.traces);
   const t = tracer;
 
+  const settings = app.settingsStore.store;
+  const { provider, name: modelName, thinking } = settings.model;
+  const thinkingEnabled = thinking?.enabled ?? false;
+  const budgetTokens = thinking?.budgetTokens ?? 8000;
+  const providerHint = thinking?.providerHint ?? "auto";
+
+  // 根据 provider + modelName 自动判断思维链模式（providerHint 可覆盖自动检测）
+  const { mode: thinkingMode, label: thinkingLabel } = detectThinkingSupport(provider, modelName);
+  const providerOptions = buildThinkingProviderOptions(
+    provider,
+    modelName,
+    budgetTokens,
+    providerHint,
+  );
+
+  // sendReasoning：
+  //  - native 模式：模型自动输出推理，始终捕获
+  //  - 用户手动开启（configurable 或 hint 模式）：发送
+  //  - 其余情况：不发送（避免无意义的流量）
+  const sendReasoning = thinkingMode === "native" || thinkingEnabled;
+
+  console.log(
+    `[chat] thinking mode=${providerHint !== "auto" ? `manual(${providerHint})` : thinkingMode} label="${thinkingLabel}"` +
+      ` userEnabled=${thinkingEnabled} sendReasoning=${sendReasoning}` +
+      ` budgetTokens=${budgetTokens} providerOptions=${JSON.stringify(providerOptions ?? null)}`,
+  );
+
   const stream = await handleChatStream({
     mastra: app.mastra,
     agentId: "browserAgent",
     version: "v6",
     params,
+    sendReasoning,
     defaultOptions: {
       maxSteps: 50,
       memory: {
@@ -39,6 +69,7 @@ export async function createChatStream(
         resource: app.getResourceId(),
       },
       instructions: `${instructions}${catalog}`,
+      providerOptions,
       onStepFinish: (event: unknown) => {
         t.onStepFinish(event as Parameters<AgentTracer["onStepFinish"]>[0]);
         app.overlayController.handleStep(event);

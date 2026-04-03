@@ -32,7 +32,8 @@ export function setupThreadsIPC(appPromise: Promise<AppInstance>): void {
     "threads:messages",
     async (_event, threadId: string, params?: { cursor?: string; limit?: number }) => {
       const app = await appPromise;
-      return listMessages(app, { threadId, ...params });
+      const limit = params?.limit ? Math.min(Math.max(Math.floor(params.limit), 1), 200) : false;
+      return listMessages(app, { threadId, cursor: params?.cursor, limit });
     },
   );
 

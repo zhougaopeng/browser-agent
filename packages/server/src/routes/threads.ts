@@ -21,7 +21,8 @@ export async function handleThreadsRoute(
   const subResource = parts[3];
 
   if (req.method === "GET" && threadId && subResource === "messages") {
-    const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 40, 1), 200);
+    const rawLimit = url.searchParams.get("limit");
+    const limit = rawLimit ? Math.min(Math.max(Math.floor(Number(rawLimit)), 1), 200) : false;
     const cursor = url.searchParams.get("cursor") ?? undefined;
     const result = await listMessages(app, { threadId, limit, cursor });
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -52,15 +53,12 @@ export async function handleThreadsRoute(
   }
 
   if (req.method === "POST" && threadId === "generate-title") {
-    console.log("[generate-title] request received");
     const body = await readBody(req);
     const { messages, threadId: tid } = JSON.parse(body) as {
       messages: { role: string; content: string }[];
       threadId?: string;
     };
-    console.log("[generate-title] messages:", messages.length, "threadId:", tid);
     const title = await generateTitle(app, messages, tid);
-    console.log("[generate-title] result:", title);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ title }));
     return;

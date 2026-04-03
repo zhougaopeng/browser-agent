@@ -56,7 +56,7 @@ function ToolFallbackRoot({
       open={isOpen}
       onOpenChange={handleOpenChange}
       className={cn(
-        "aui-tool-fallback-root group/tool-fallback-root w-full rounded-lg border py-3",
+        "aui-tool-fallback-root group/tool-fallback-root my-2 w-full rounded-xl border border-border/60 bg-muted/20 py-2.5",
         className,
       )}
       style={
@@ -100,7 +100,7 @@ function ToolFallbackTrigger({
     <CollapsibleTrigger
       data-slot="tool-fallback-trigger"
       className={cn(
-        "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2 px-4 text-sm transition-colors",
+        "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2.5 px-4 text-sm text-muted-foreground/80 transition-colors hover:text-foreground",
         className,
       )}
       {...props}
@@ -108,9 +108,10 @@ function ToolFallbackTrigger({
       <Icon
         data-slot="tool-fallback-trigger-icon"
         className={cn(
-          "aui-tool-fallback-trigger-icon size-4 shrink-0",
-          isCancelled && "text-muted-foreground",
-          isRunning && "animate-spin",
+          "aui-tool-fallback-trigger-icon size-3.5 shrink-0",
+          isCancelled && "text-muted-foreground/50",
+          isRunning && "animate-spin text-primary/60",
+          !isRunning && !isCancelled && "text-emerald-600/70",
         )}
       />
       <span
@@ -121,7 +122,7 @@ function ToolFallbackTrigger({
         )}
       >
         <span>
-          {label}: <b>{toolName}</b>
+          {label}: <span className="font-medium">{toolName}</span>
         </span>
         {isRunning && (
           <span
@@ -129,7 +130,7 @@ function ToolFallbackTrigger({
             data-slot="tool-fallback-trigger-shimmer"
             className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            {label}: <b>{toolName}</b>
+            {label}: <span className="font-medium">{toolName}</span>
           </span>
         )}
       </span>

@@ -181,8 +181,13 @@ After your first browser_snapshot on any page, check for these signals:
    - You have called browser_snapshot 3+ times in a row without any meaningful action in between
    - You keep clicking/typing the same element but the page state does not change
    - A tool consistently returns the same error across different retry strategies
-   - You have exceeded 5 consecutive error-recovery attempts (snapshot→retry cycles)
+   - You have exceeded 5 consecutive error-recovery attempts (snapshot\u2192retry cycles)
+   - **Selector guessing loop**: You have called \`browser_evaluate\` 3+ consecutive times with different CSS selectors or JS expressions, and ALL returned empty string \`""\`, \`null\`, or \`[]\`. This means you are blindly guessing class names — STOP. Use \`browser_snapshot\` to read the real DOM structure, or run \`() => document.body.innerHTML.slice(0, 3000)\` to inspect the actual HTML before continuing.
    When stopping, explain: (a) what you were trying to do, (b) what error kept occurring, (c) possible root causes. Do NOT silently retry forever.
+8. **browser_evaluate empty result policy** — When \`browser_evaluate\` returns \`""\`, \`null\`, or \`[]\`:
+   - This means the selector/expression found nothing. Do NOT try a CSS name variation.
+   - After **2 consecutive empty results**, you MUST switch strategy: call \`browser_snapshot\` to see the real DOM, or run \`() => [...document.querySelectorAll('*')].filter(el => !el.children.length && el.textContent.trim()).slice(0, 30).map(el => el.tagName + '.' + el.className + ': ' + el.textContent.trim().slice(0, 50)).join('\\n')\` to discover real element class names.
+   - NEVER guess more than 2 CSS class name variations in a row. Actual class names must be READ from the DOM, not invented.
 12. **User handoff** — Call \`wait_for_user\` immediately when you cannot proceed on your own. This includes but is not limited to:
    - **Authentication**: login pages, password entry, SSO redirects
    - **Verification**: CAPTCHAs, image puzzles, slider verification, SMS/email codes, 2FA prompts

@@ -13,6 +13,12 @@ export interface AppSettings {
     name: string;
     apiKey: string;
     titleModelName: string;
+    thinking: {
+      enabled: boolean;
+      budgetTokens: number;
+      /** "auto": 根据模型名自动判断；否则强制使用指定厂商的 thinking API 格式 */
+      providerHint: "auto" | "anthropic" | "google";
+    };
   };
   browser: BrowserConfig;
   skills: {
@@ -26,6 +32,11 @@ const defaults: AppSettings = {
     name: "gpt-4.1",
     apiKey: "",
     titleModelName: "",
+    thinking: {
+      enabled: false,
+      budgetTokens: 8000,
+      providerHint: "auto",
+    },
   },
   browser: {
     headless: false,

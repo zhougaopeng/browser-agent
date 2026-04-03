@@ -150,3 +150,31 @@ body,
     @apply font-sans;
   }
 }
+
+/* Thread message separator */
+[data-role="assistant"] + [data-role="user"],
+[data-role="user"] + [data-role="assistant"] {
+  border-top: 1px solid oklch(0.9 0.005 80);
+  margin-top: 0.25rem;
+  padding-top: 1.25rem;
+}
+
+.dark [data-role="assistant"] + [data-role="user"],
+.dark [data-role="user"] + [data-role="assistant"] {
+  border-top-color: oklch(1 0 0 / 6%);
+}
+
+/* Tool fallback card refinement */
+.aui-tool-fallback-root {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.aui-tool-fallback-root:hover {
+  border-color: oklch(0.82 0.012 80);
+  background-color: oklch(0.97 0.005 80);
+}
+.dark .aui-tool-fallback-root:hover {
+  border-color: oklch(1 0 0 / 15%);
+  background-color: oklch(0.22 0 0);
+}

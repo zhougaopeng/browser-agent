@@ -11,6 +11,7 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BrainCircuitIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -18,7 +19,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
@@ -29,23 +30,55 @@ export const Thread: FC = () => {
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
       style={{
-        ["--thread-max-width" as string]: "44rem",
+        ["--thread-max-width" as string]: "48rem",
         ["--composer-radius" as string]: "24px",
-        ["--composer-padding" as string]: "10px",
+        ["--composer-padding" as string]: "12px",
       }}
     >
       <ThreadPrimitive.Viewport
         turnAnchor="top"
-        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
+        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-8"
       >
         <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
 
-        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-4 md:pb-6">
+        <AuiIf condition={(s) => s.thread.isRunning}>
+          <AssistantLoading />
+        </AuiIf>
+
+        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-6 md:pb-8">
           <ThreadScrollToBottom />
           <Composer />
         </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
+  );
+};
+
+const AssistantLoading: FC = () => {
+  return (
+    <div
+      className="mx-auto w-full max-w-(--thread-max-width) px-3 py-4"
+      data-role="assistant-loading"
+    >
+      <div className="flex items-center gap-1.5 px-3">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="inline-block size-1.5 rounded-full bg-muted-foreground/40"
+            style={{
+              animation: "aui-pulse 1.4s ease-in-out infinite",
+              animationDelay: `${i * 0.2}s`,
+            }}
+          />
+        ))}
+      </div>
+      <style>{`
+        @keyframes aui-pulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </div>
   );
 };
 
@@ -78,7 +111,7 @@ const Composer: FC = () => {
       >
         <ComposerPrimitive.Input
           placeholder="描述你想完成的操作..."
-          className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
+          className="aui-composer-input max-h-40 min-h-12 w-full resize-none bg-transparent px-2 py-1.5 text-[0.9375rem] leading-relaxed outline-none placeholder:text-muted-foreground/60"
           rows={1}
           autoFocus
           aria-label="Message input"
@@ -135,13 +168,14 @@ const MessageError: FC = () => {
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150"
+      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-4 duration-150"
       data-role="assistant"
     >
-      <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+      <div className="aui-assistant-message-content wrap-break-word px-3 text-[0.9375rem] text-foreground leading-[1.75]">
         <MessagePrimitive.Parts>
           {({ part }) => {
             if (part.type === "text") return <MarkdownText />;
+            if (part.type === "reasoning") return <ReasoningText part={part} />;
             if (part.type === "tool-call") return part.toolUI ?? <ToolFallback {...part} />;
             return null;
           }}
@@ -149,7 +183,7 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+      <div className="aui-assistant-message-footer mt-2 ml-3 flex min-h-6 items-center">
         <BranchPicker />
         <AssistantActionBar />
       </div>
@@ -186,11 +220,11 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full max-w-(--thread-max-width) animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
+      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full max-w-(--thread-max-width) animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-3 py-4 duration-150 [&:where(>*)]:col-start-2"
       data-role="user"
     >
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-accent px-4 py-2.5 text-foreground empty:hidden">
+        <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-accent/80 px-4 py-3 text-[0.9375rem] leading-relaxed text-foreground shadow-sm empty:hidden">
           <MessagePrimitive.Parts />
         </div>
       </div>
@@ -224,5 +258,95 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest
         </TooltipIconButton>
       </BranchPickerPrimitive.Next>
     </BranchPickerPrimitive.Root>
+  );
+};
+
+interface ReasoningPart {
+  type: "reasoning";
+  text: string;
+}
+
+const ReasoningText: FC<{ part: ReasoningPart }> = ({ part }) => {
+  const isRunning = useAuiState((s) => s.thread.isRunning);
+  const hasText = part.text && part.text.length > 0;
+  // 流式状态：thread 在运行且内容为空或仍在更新
+  const isStreaming = isRunning && !hasText;
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="aui-reasoning-root my-3 overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+      {/* 头部 */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-muted/30"
+      >
+        <BrainCircuitIcon
+          className={cn(
+            "size-3.5 shrink-0 transition-colors",
+            isStreaming ? "animate-pulse text-primary" : "text-muted-foreground/70",
+          )}
+        />
+        <span className="flex-1 text-xs font-medium text-muted-foreground">
+          {isStreaming ? "思考中..." : "思考过程"}
+        </span>
+        {isStreaming ? (
+          <span className="flex items-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="inline-block size-1 rounded-full bg-primary/60"
+                style={{
+                  animation: "aui-pulse 1.2s ease-in-out infinite",
+                  animationDelay: `${i * 0.15}s`,
+                }}
+              />
+            ))}
+          </span>
+        ) : (
+          <svg
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+              open ? "rotate-180" : "rotate-0",
+            )}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
+      </button>
+
+      {/* 内容区 */}
+      {open && (
+        <div className="border-t border-border/40 px-3.5 pb-3 pt-2.5">
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground/75">
+            {hasText ? (
+              <>
+                {part.text}
+                {isRunning && (
+                  <span
+                    className="ml-0.5 inline-block h-3 w-0.5 bg-primary/70 align-middle"
+                    style={{ animation: "aui-blink 1s step-end infinite" }}
+                  />
+                )}
+              </>
+            ) : (
+              <span className="italic opacity-60">正在思考...</span>
+            )}
+          </p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes aui-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
+    </div>
   );
 };

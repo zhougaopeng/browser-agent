@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error CSS module type declaration not provided by package
 import "@assistant-ui/react-markdown/styles/dot.css";
 
 import {
@@ -67,7 +66,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h1: ({ className, ...props }) => (
     <h1
       className={cn(
-        "aui-md-h1 mb-2 scroll-m-20 font-semibold text-base first:mt-0 last:mb-0",
+        "aui-md-h1 mb-3 mt-5 scroll-m-20 font-semibold text-lg tracking-tight first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -76,7 +75,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h2: ({ className, ...props }) => (
     <h2
       className={cn(
-        "aui-md-h2 mt-3 mb-1.5 scroll-m-20 font-semibold text-sm first:mt-0 last:mb-0",
+        "aui-md-h2 mt-5 mb-2 scroll-m-20 font-semibold text-base tracking-tight first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -85,7 +84,7 @@ const defaultComponents = memoizeMarkdownComponents({
   h3: ({ className, ...props }) => (
     <h3
       className={cn(
-        "aui-md-h3 mt-2.5 mb-1 scroll-m-20 font-semibold text-sm first:mt-0 last:mb-0",
+        "aui-md-h3 mt-4 mb-1.5 scroll-m-20 font-semibold text-[0.9375rem] first:mt-0 last:mb-0",
         className,
       )}
       {...props}
@@ -113,10 +112,7 @@ const defaultComponents = memoizeMarkdownComponents({
     />
   ),
   p: ({ className, ...props }) => (
-    <p
-      className={cn("aui-md-p my-2.5 leading-normal first:mt-0 last:mb-0", className)}
-      {...props}
-    />
+    <p className={cn("aui-md-p my-3 leading-[1.75] first:mt-0 last:mb-0", className)} {...props} />
   ),
   a: ({ className, ...props }) => (
     <a
@@ -139,7 +135,7 @@ const defaultComponents = memoizeMarkdownComponents({
   ul: ({ className, ...props }) => (
     <ul
       className={cn(
-        "aui-md-ul my-2 ml-4 list-disc marker:text-muted-foreground [&>li]:mt-1",
+        "aui-md-ul my-3 ml-5 list-disc marker:text-muted-foreground/60 [&>li]:mt-1.5",
         className,
       )}
       {...props}
@@ -148,7 +144,7 @@ const defaultComponents = memoizeMarkdownComponents({
   ol: ({ className, ...props }) => (
     <ol
       className={cn(
-        "aui-md-ol my-2 ml-4 list-decimal marker:text-muted-foreground [&>li]:mt-1",
+        "aui-md-ol my-3 ml-5 list-decimal marker:text-muted-foreground/60 [&>li]:mt-1.5",
         className,
       )}
       {...props}
@@ -194,7 +190,7 @@ const defaultComponents = memoizeMarkdownComponents({
     />
   ),
   li: ({ className, ...props }) => (
-    <li className={cn("aui-md-li leading-normal", className)} {...props} />
+    <li className={cn("aui-md-li leading-[1.75]", className)} {...props} />
   ),
   sup: ({ className, ...props }) => (
     <sup className={cn("aui-md-sup [&>a]:text-xs [&>a]:no-underline", className)} {...props} />

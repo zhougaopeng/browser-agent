@@ -8,7 +8,7 @@ export interface ListThreadsParams {
 
 export interface ListMessagesParams {
   threadId: string;
-  limit?: number;
+  limit?: number | false;
   /** Cursor: ISO timestamp of the last message's createdAt from the previous page */
   cursor?: string;
 }
@@ -45,6 +45,8 @@ export async function listThreads(app: AppInstance, params?: ListThreadsParams) 
   const limit = params?.limit ?? false;
   const page = Math.max((params?.page ?? 1) - 1, 0);
 
+  console.log("listThreads: ", app.getResourceId(), limit, page);
+
   const result = await memoryStore.listThreads({
     filter: { resourceId: app.getResourceId() },
     orderBy: { field: "updatedAt", direction: "DESC" },
@@ -62,12 +64,14 @@ export async function listMessages(app: AppInstance, params: ListMessagesParams)
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
   if (!memoryStore) return { messages: [], hasMore: false };
 
-  const limit = Math.min(Math.max(params.limit ?? 40, 1), 200);
+  const limit = params.limit === false ? false : Math.min(Math.max(params.limit ?? 40, 1), 200);
 
   // cursor 是时间戳 ISO 字符串，直接解析，无需额外查询
   // 始终用 end 边界 + DESC 取 cursor 之前最近的 N 条，再翻转为 ASC 展示顺序
   const cursorDate = params.cursor ? new Date(params.cursor) : new Date();
   const dateFilter = { dateRange: { end: cursorDate, endExclusive: !!params.cursor } };
+
+  console.log("listMessages: ", params.threadId, limit, dateFilter);
 
   const result = await memoryStore.listMessages({
     threadId: params.threadId,
@@ -78,7 +82,7 @@ export async function listMessages(app: AppInstance, params: ListMessagesParams)
 
   result.messages.reverse();
 
-  return { messages: result.messages, hasMore: result.hasMore };
+  return { messages: result.messages, hasMore: limit === false ? false : result.hasMore };
 }
 
 export async function deleteThread(app: AppInstance, threadId: string) {

@@ -4,6 +4,14 @@ import type { UIMessage } from "ai";
 import { useState } from "react";
 import { api } from "../api/adapter";
 
+interface ToolInvocationPayload {
+  state: "call" | "partial-call" | "result" | "error";
+  toolCallId: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  result?: unknown;
+}
+
 interface ServerMessagePart {
   type: string;
   text?: string;
@@ -13,6 +21,7 @@ interface ServerMessagePart {
   argsText?: string;
   result?: unknown;
   isError?: boolean;
+  toolInvocation?: ToolInvocationPayload;
   [key: string]: unknown;
 }
 
@@ -100,6 +109,24 @@ function convertPartsToUI(parts: ServerMessagePart[]): UIMessagePart[] {
         });
         break;
       }
+      case "tool-invocation": {
+        const inv = p.toolInvocation;
+        if (inv) {
+          const toolName = inv.toolName ?? "";
+          const hasResult = inv.state === "result" || inv.state === "error";
+          const isError = inv.state === "error";
+          converted.push({
+            type: `tool-${toolName}`,
+            toolName,
+            toolCallId: inv.toolCallId ?? "",
+            state: hasResult ? (isError ? "output-error" : "output-available") : "call",
+            input: inv.args ?? {},
+            ...(hasResult && !isError ? { output: inv.result } : {}),
+            ...(hasResult && isError ? { errorText: String(inv.result ?? "Error") } : {}),
+          });
+        }
+        break;
+      }
       case "step-start":
         converted.push({ type: "step-start" });
         break;
@@ -129,7 +156,7 @@ class ServerHistoryAdapter {
         if (!remoteId) return { messages: [] };
 
         try {
-          const data = await api.threads.messages(remoteId, { limit: 40 });
+          const data = await api.threads.messages(remoteId);
           const serverMsgs = (data.messages ?? []) as unknown as ServerMessage[];
           if (serverMsgs.length === 0) return { messages: [] };
 

@@ -4,6 +4,11 @@ export interface AppSettings {
     name: string;
     apiKey: string;
     titleModelName: string;
+    thinking: {
+      enabled: boolean;
+      budgetTokens: number;
+      providerHint: "auto" | "anthropic" | "google";
+    };
   };
   browser: {
     headless: boolean;
