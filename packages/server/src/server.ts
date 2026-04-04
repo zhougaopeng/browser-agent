@@ -24,9 +24,9 @@ async function main() {
     try {
       const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
-      if (url.pathname === "/api/chat") return handleChatRoute(req, res, app);
-      if (url.pathname.startsWith("/api/settings")) return handleSettingsRoute(req, res, app);
-      if (url.pathname.startsWith("/api/threads")) return handleThreadsRoute(req, res, app);
+      if (url.pathname === "/api/chat") return await handleChatRoute(req, res, app);
+      if (url.pathname.startsWith("/api/settings")) return await handleSettingsRoute(req, res, app);
+      if (url.pathname.startsWith("/api/threads")) return await handleThreadsRoute(req, res, app);
 
       res.writeHead(404).end("Not Found");
     } catch (err) {
@@ -46,5 +46,9 @@ async function main() {
     process.exit(0);
   });
 }
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[server] Unhandled promise rejection (process kept alive):", reason);
+});
 
 main().catch(console.error);

@@ -14,32 +14,42 @@ export async function handleChatRoute(
     return;
   }
 
-  const body = await readBody(req);
-  const params = JSON.parse(body) as ChatStreamHandlerParams & { id?: string };
-  const { stream, threadId } = await createChatStream(app, params);
+  try {
+    const body = await readBody(req);
+    const params = JSON.parse(body) as ChatStreamHandlerParams & { id?: string };
+    const { stream, threadId } = await createChatStream(app, params);
 
-  const streamResponse = createUIMessageStreamResponse({ stream });
+    const streamResponse = createUIMessageStreamResponse({ stream });
 
-  res.writeHead(streamResponse.status, {
-    "Content-Type": streamResponse.headers.get("Content-Type") ?? "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "X-Thread-Id": threadId,
-  });
+    res.writeHead(streamResponse.status, {
+      "Content-Type": streamResponse.headers.get("Content-Type") ?? "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Thread-Id": threadId,
+    });
 
-  if (streamResponse.body) {
-    const reader = streamResponse.body.getReader();
-    const pump = async () => {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(value);
-      }
+    if (streamResponse.body) {
+      const reader = streamResponse.body.getReader();
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      };
+      await pump();
+    } else {
       res.end();
-    };
-    pump().catch(() => res.end());
-  } else {
-    res.end();
+    }
+  } catch (err) {
+    console.error("[chat] Route error:", err);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }));
+    } else {
+      res.end();
+    }
   }
 }
 

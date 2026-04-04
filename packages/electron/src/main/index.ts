@@ -27,14 +27,22 @@ app.whenReady().then(async () => {
   const serverApp = await appPromise;
 
   protocol.handle("agent", async (request) => {
-    const url = new URL(request.url);
+    try {
+      const url = new URL(request.url);
 
-    if (url.pathname === "/chat" && request.method === "POST") {
-      const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
-      return createChatResponse(serverApp, params);
+      if (url.pathname === "/chat" && request.method === "POST") {
+        const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
+        return await createChatResponse(serverApp, params);
+      }
+
+      return new Response("Not Found", { status: 404 });
+    } catch (err) {
+      console.error("[electron] Protocol handler error:", err);
+      return new Response(
+        JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
     }
-
-    return new Response("Not Found", { status: 404 });
   });
 });
 
