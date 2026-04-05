@@ -1,11 +1,8 @@
-import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import { defineConfig } from "electron-vite";
 
 export default defineConfig({
-  main: {
-    plugins: [externalizeDepsPlugin()],
-  },
+  main: {},
   preload: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
         output: {
@@ -15,11 +12,5 @@ export default defineConfig({
       },
     },
   },
-  renderer: {
-    build: {
-      rollupOptions: {
-        input: {},
-      },
-    },
-  },
+  renderer: {},
 });

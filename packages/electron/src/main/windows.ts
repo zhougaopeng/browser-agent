@@ -1,6 +1,6 @@
 import path from "node:path";
 import { app, BrowserWindow } from "electron";
-import { loadFrontend } from "./frontend-loader";
+import { loadSplash } from "./frontend-loader";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -21,11 +21,7 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
-  loadFrontend(mainWindow);
-
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools({ mode: "detach" });
-  }
+  loadSplash(mainWindow);
 
   mainWindow.on("closed", () => {
     mainWindow = null;

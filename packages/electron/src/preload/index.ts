@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 const api = {
+  splash: {
+    onStatus: (cb: (status: { stage: string; message: string; progress: number }) => void) => {
+      ipcRenderer.on("splash:status", (_e, s) => cb(s));
+      return () => {
+        ipcRenderer.removeAllListeners("splash:status");
+      };
+    },
+  },
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     set: (key: string, value: unknown) => ipcRenderer.invoke("settings:set", key, value),

@@ -1,10 +1,74 @@
+import { createHash } from "node:crypto";
+import {
+  createWriteStream,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
+import archiver from "archiver";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { type Plugin, defineConfig } from "vite";
 
-export default defineConfig({
-  plugins: [tailwindcss(), react()],
+function contentHash(distDir: string): string {
+  const hash = createHash("sha256");
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir).sort()) {
+      const full = path.join(dir, name);
+      if (statSync(full).isDirectory()) {
+        walk(full);
+      } else {
+        hash.update(path.relative(distDir, full));
+        hash.update(readFileSync(full));
+      }
+    }
+  };
+  walk(distDir);
+  return hash.digest("hex").slice(0, 8);
+}
+
+function buildRelease(): Plugin {
+  return {
+    name: "build-release",
+    async closeBundle() {
+      const distDir = path.resolve(__dirname, "dist");
+      const releaseDir = path.resolve(__dirname, "release");
+      const short = contentHash(distDir);
+      const zipName = `web-${short}.zip`;
+      const versionInfo = { hash: short, zipFileName: zipName };
+
+      writeFileSync(path.join(distDir, "version.json"), JSON.stringify(versionInfo, null, 2));
+
+      mkdirSync(releaseDir, { recursive: true });
+      writeFileSync(
+        path.join(releaseDir, "version.json"),
+        JSON.stringify(versionInfo, null, 2),
+      );
+
+      const output = createWriteStream(path.join(releaseDir, zipName));
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      await new Promise<void>((resolve, reject) => {
+        output.on("close", resolve);
+        archive.on("error", reject);
+        archive.pipe(output);
+        archive.glob("**/*", { cwd: distDir, dot: true });
+        archive.finalize();
+      });
+
+      console.log(`\x1b[32m  release/${zipName} (hash: ${short})\x1b[0m`);
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    tailwindcss(),
+    react(),
+    mode === "zip" && buildRelease(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -13,4 +77,4 @@ export default defineConfig({
   server: {
     port: 5173,
   },
-});
+}));

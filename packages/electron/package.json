@@ -11,7 +11,8 @@
     "fetch-frontend": "tsx ../../scripts/fetch-frontend.mts"
   },
   "dependencies": {
-    "@browser-agent/server": "workspace:*"
+    "@browser-agent/server": "workspace:*",
+    "extract-zip": "^2.0.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

@@ -11,7 +11,7 @@
     "build:server": "pnpm -F @browser-agent/server build",
     "build:web": "pnpm -F @browser-agent/web build",
     "build:electron": "pnpm -F @browser-agent/electron build",
-    "package": "pnpm build && pnpm -F @browser-agent/electron fetch-frontend --local ../web/dist && pnpm -F @browser-agent/electron package",
+    "package": "pnpm -F @browser-agent/web build:zip && pnpm -F @browser-agent/electron fetch-frontend --local ../web/dist && pnpm -F @browser-agent/electron package",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",
