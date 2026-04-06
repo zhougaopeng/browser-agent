@@ -25,8 +25,20 @@ export type ProgressCallback = (status: ProgressStatus) => void;
 
 const TAG = "[frontend-loader]";
 
-function getFrontendDir(): string {
+export function getFrontendDir(): string {
   return path.join(app.getPath("userData"), "frontend-dist");
+}
+
+export function getActiveFrontendDir(): string | null {
+  const userDataDir = getFrontendDir();
+  if (existsSync(path.join(userDataDir, "index.html"))) return userDataDir;
+
+  if (app.isPackaged) {
+    const resourceDir = path.join(process.resourcesPath, "frontend-dist");
+    if (existsSync(path.join(resourceDir, "index.html"))) return resourceDir;
+  }
+
+  return null;
 }
 
 function readVersionJson(dir: string): VersionInfo | null {
@@ -37,18 +49,6 @@ function readVersionJson(dir: string): VersionInfo | null {
   } catch {
     return null;
   }
-}
-
-function getFrontendPath(): string | null {
-  const userDataIndex = path.join(getFrontendDir(), "index.html");
-  if (existsSync(userDataIndex)) return userDataIndex;
-
-  if (app.isPackaged) {
-    const resourcePath = path.join(process.resourcesPath, "frontend-dist", "index.html");
-    if (existsSync(resourcePath)) return resourcePath;
-  }
-
-  return null;
 }
 
 function getLocalHash(): string | null {
@@ -79,9 +79,8 @@ export function loadFrontend(win: BrowserWindow): void {
     return;
   }
 
-  const filePath = getFrontendPath();
-  if (filePath) {
-    win.loadFile(filePath);
+  if (getActiveFrontendDir()) {
+    win.loadURL("hanker://frontend/");
     return;
   }
 

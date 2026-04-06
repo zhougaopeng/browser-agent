@@ -1,8 +1,10 @@
+import path from "node:path";
 import { type ChatStreamHandlerParams, createApp, createChatResponse } from "@browser-agent/server";
-import { app, protocol } from "electron";
+import { app, net, protocol } from "electron";
 import {
   checkForUpdate,
   downloadUpdate,
+  getActiveFrontendDir,
   loadFrontend,
   type ProgressStatus,
 } from "./frontend-loader";
@@ -14,6 +16,10 @@ protocol.registerSchemesAsPrivileged([
   {
     scheme: "agent",
     privileges: { standard: true, supportFetchAPI: true, stream: true },
+  },
+  {
+    scheme: "hanker",
+    privileges: { standard: true, supportFetchAPI: true },
   },
 ]);
 
@@ -29,6 +35,22 @@ app.whenReady().then(async () => {
 
   setupSettingsIPC(mainWindow, appPromise);
   setupThreadsIPC(appPromise);
+
+  protocol.handle("hanker", (request) => {
+    const url = new URL(request.url);
+    let pathname = decodeURIComponent(url.pathname);
+
+    if (pathname === "/" || !path.extname(pathname)) {
+      pathname = "/index.html";
+    }
+
+    const frontendDir = getActiveFrontendDir();
+    if (!frontendDir) {
+      return new Response("Frontend not found", { status: 404 });
+    }
+
+    return net.fetch(`file://${path.join(frontendDir, pathname)}`);
+  });
 
   // Two independent paths run in parallel:
   // 1) Frontend: update check → optional download → loadFrontend
