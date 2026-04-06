@@ -8,10 +8,11 @@ import {
 import { CheckIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { remoteToLocalMap, threadSwitchers } from "@/lib/thread-adapter";
 
 interface ThreadListProps {
   onNewThread?: () => void;
-  onSelectThread?: () => void;
+  onSelectThread?: (remoteId: string) => void;
   onDeleteThread?: () => void;
   slotAfterNew?: ReactNode;
 }
@@ -72,17 +73,34 @@ const ThreadListSkeleton: FC = () => {
   );
 };
 
-const ThreadListItem: FC<{ onClick?: () => void; onDelete?: () => void }> = ({
+const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () => void }> = ({
   onClick,
   onDelete,
 }) => {
+  const aui = useAui();
   const [isEditing, setIsEditing] = useState(false);
   const title = useAuiState((s) => s.threadListItem.title ?? "");
+  const localId = useAuiState((s) => s.threadListItem.id);
+  const itemRemoteId = useAuiState((s) => s.threadListItem.remoteId) as string | undefined;
+
+  if (itemRemoteId) {
+    remoteToLocalMap.set(itemRemoteId, localId);
+  }
+
+  useEffect(() => {
+    if (!itemRemoteId) return;
+    threadSwitchers.set(itemRemoteId, () => aui.threadListItem().switchTo());
+    return () => {
+      threadSwitchers.delete(itemRemoteId);
+    };
+  }, [itemRemoteId, aui]);
 
   return (
     <ThreadListItemPrimitive.Root
       className="aui-thread-list-item group relative flex h-9 items-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:outline-none data-active:bg-sidebar-accent"
-      onClick={onClick}
+      onClick={() => {
+        if (itemRemoteId) onClick?.(itemRemoteId);
+      }}
     >
       {isEditing ? (
         <ThreadListItemTitleEditor onClose={() => setIsEditing(false)} />

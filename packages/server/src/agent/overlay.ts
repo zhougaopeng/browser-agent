@@ -37,7 +37,7 @@ export class OverlayController {
       if (!evaluate || !("execute" in evaluate) || !evaluate.execute) return;
       await (
         evaluate.execute as (params: Record<string, unknown>, ctx: unknown) => Promise<unknown>
-      )({ expression: code }, {});
+      )({ function: code }, {});
     } catch {
       // browser_evaluate can fail if no page is open — silently ignore
     }

@@ -13,6 +13,9 @@ function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
   cur[last] = value;
 }
 
+const DEBOUNCE_MS = 600;
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 interface SettingsState {
   settings: AppSettings | null;
   loading: boolean;
@@ -33,6 +36,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const next = { ...prev } as unknown as Record<string, unknown>;
     setByPath(next, key, value);
     set({ settings: next as unknown as AppSettings });
-    await api.settings.set(key, value);
+
+    const existing = debounceTimers.get(key);
+    if (existing) clearTimeout(existing);
+    debounceTimers.set(
+      key,
+      setTimeout(() => {
+        debounceTimers.delete(key);
+        api.settings.set(key, value);
+      }, DEBOUNCE_MS),
+    );
   },
 }));

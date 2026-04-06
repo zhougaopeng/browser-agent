@@ -23,7 +23,7 @@ describe("OverlayController", () => {
       await controller.showAutomating();
 
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("automating") },
+        { function: expect.stringContaining("automating") },
         {},
       );
     });
@@ -34,11 +34,11 @@ describe("OverlayController", () => {
       await controller.showWaiting("请完成登录操作");
 
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("waiting") },
+        { function: expect.stringContaining("waiting") },
         {},
       );
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("请完成登录操作") },
+        { function: expect.stringContaining("请完成登录操作") },
         {},
       );
     });
@@ -48,7 +48,7 @@ describe("OverlayController", () => {
     it("evaluates hide expression", async () => {
       await controller.hide();
 
-      expect(mockExecute).toHaveBeenCalledWith({ expression: expect.stringContaining("hide") }, {});
+      expect(mockExecute).toHaveBeenCalledWith({ function: expect.stringContaining("hide") }, {});
     });
   });
 
@@ -67,11 +67,11 @@ describe("OverlayController", () => {
       await controller.handleStep(event);
 
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("waiting") },
+        { function: expect.stringContaining("waiting") },
         {},
       );
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("请完成登录") },
+        { function: expect.stringContaining("请完成登录") },
         {},
       );
     });
@@ -84,7 +84,7 @@ describe("OverlayController", () => {
       await controller.handleStep(event);
 
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("automating") },
+        { function: expect.stringContaining("automating") },
         {},
       );
     });
@@ -105,7 +105,7 @@ describe("OverlayController", () => {
 
       expect(mockExecute).toHaveBeenCalledTimes(1);
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("waiting") },
+        { function: expect.stringContaining("waiting") },
         {},
       );
     });
@@ -134,7 +134,7 @@ describe("OverlayController", () => {
       await controller.handleStep(event);
 
       expect(mockExecute).toHaveBeenCalledWith(
-        { expression: expect.stringContaining("automating") },
+        { function: expect.stringContaining("automating") },
         {},
       );
     });

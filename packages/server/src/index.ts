@@ -10,6 +10,17 @@ import { type AppPaths, createPaths, getResourceId } from "./paths";
 import { skillManager } from "./skills/manager";
 import { type AppSettings, createSettingsStore } from "./store/settings";
 
+const ENV_KEY_OVERRIDES: Record<string, string> = {
+  alibaba: "DASHSCOPE_API_KEY",
+  google: "GOOGLE_GENERATIVE_AI_API_KEY",
+  moonshotai: "MOONSHOT_API_KEY",
+  zhipuai: "ZHIPU_API_KEY",
+};
+
+function resolveEnvKey(provider: string): string {
+  return ENV_KEY_OVERRIDES[provider] ?? `${provider.toUpperCase()}_API_KEY`;
+}
+
 export interface AppInstance {
   readonly mastra: Mastra;
   readonly settingsStore: Conf<AppSettings>;
@@ -34,7 +45,7 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
     const settings = settingsStore.store;
 
     if (settings.model.apiKey) {
-      const envKey = `${settings.model.provider.toUpperCase()}_API_KEY`;
+      const envKey = resolveEnvKey(settings.model.provider);
       process.env[envKey] = settings.model.apiKey;
     }
 

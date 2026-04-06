@@ -55,14 +55,20 @@ describe("useSettingsStore", () => {
     expect(state.loading).toBe(false);
   });
 
-  it("updateSetting calls api.settings.set with key and value", async () => {
+  it("updateSetting calls api.settings.set with key and value after debounce", async () => {
+    vi.useFakeTimers();
     const { fetchSettings } = useSettingsStore.getState();
     await fetchSettings();
 
     const { updateSetting } = useSettingsStore.getState();
     await updateSetting("model.name", "claude-4");
 
+    expect(mockApi.settings.set).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(600);
+
     expect(mockApi.settings.set).toHaveBeenCalledWith("model.name", "claude-4");
+    vi.useRealTimers();
   });
 
   it("updateSetting optimistically updates local state", async () => {

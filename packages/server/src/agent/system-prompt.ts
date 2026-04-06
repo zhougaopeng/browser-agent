@@ -29,8 +29,8 @@ Before executing, quickly assess the user's request:
 2. browser_snapshot → get the accessibility tree with element refs (e.g. ref="e5").
 3. Use refs to interact: browser_click, browser_type, browser_hover, etc.
 4. After each action a new snapshot is usually returned — read it to understand the updated page state.
-5. Repeat until the task is done.
-6. browser_close when finished.
+5. Repeat until the task is done, then respond directly with results.
+6. **Do NOT call browser_close** — the browser stays open for follow-up tasks. Only close if the user explicitly asks to close it.
 
 ---
 

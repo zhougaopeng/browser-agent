@@ -9,6 +9,32 @@ import { api } from "../api/adapter";
  */
 export const threadIdMap = new Map<string, string>();
 
+/**
+ * Reverse map: server-side remoteId → assistant-ui localId.
+ * Used by the router to look up which local thread to activate for a given URL.
+ * Populated from ThreadListItem rendering (existing threads) and initialize() (new threads).
+ */
+export const remoteToLocalMap = new Map<string, string>();
+
+/**
+ * Stores switchTo functions from each ThreadListItem's context.
+ * Keyed by remoteId, each function calls the item's own aui.threadListItem().switchTo().
+ * Used for URL-based thread restoration on page refresh.
+ */
+export const threadSwitchers = new Map<string, () => void>();
+
+let pendingRemoteId: string | null = null;
+
+/**
+ * Pre-generate the remoteId for the next thread before calling send().
+ * This allows the caller to navigate to /chat/:remoteId immediately
+ * instead of waiting for the async initialize() to complete.
+ */
+export function preGenerateThreadId(): string {
+  pendingRemoteId = uuidv7();
+  return pendingRemoteId;
+}
+
 function createTitleStream(title: string): ReadableStream {
   return new ReadableStream({
     start(controller) {
@@ -46,21 +72,32 @@ function extractTextMessages(
 }
 
 export function createThreadListAdapter(): RemoteThreadListAdapter {
+  let listInflight: Promise<{
+    threads: { remoteId: string; title?: string; status: "regular" }[];
+  }> | null = null;
+
   const adapter: RemoteThreadListAdapter = {
     async list() {
-      const data = await api.threads.list();
-      return {
+      if (listInflight) return listInflight;
+      listInflight = api.threads.list().then((data) => ({
         threads: data.threads.map((t) => ({
           remoteId: t.id,
           title: t.title || undefined,
           status: "regular" as const,
         })),
-      };
+      }));
+      try {
+        return await listInflight;
+      } finally {
+        listInflight = null;
+      }
     },
 
     async initialize(localId: string) {
-      const id = uuidv7();
+      const id = pendingRemoteId ?? uuidv7();
+      pendingRemoteId = null;
       threadIdMap.set(localId, id);
+      remoteToLocalMap.set(id, localId);
       return { remoteId: id, externalId: id };
     },
 

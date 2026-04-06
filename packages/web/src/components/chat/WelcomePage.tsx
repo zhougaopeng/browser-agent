@@ -2,9 +2,10 @@ import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { ArrowUpIcon, GlobeIcon, MousePointerClickIcon, SearchIcon } from "lucide-react";
 import { type FC, type FormEvent, useCallback, useRef, useState } from "react";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { preGenerateThreadId } from "@/lib/thread-adapter";
 
 interface WelcomePageProps {
-  onStartChat?: () => void;
+  onStartChat?: (remoteId: string) => void;
 }
 
 const SUGGESTIONS = [
@@ -75,7 +76,7 @@ const SuggestionCard: FC<{
   );
 };
 
-const WelcomeComposer: FC<{ onSend?: () => void }> = ({ onSend }) => {
+const WelcomeComposer: FC<{ onSend?: (remoteId: string) => void }> = ({ onSend }) => {
   const aui = useAui();
   const canSend = useAuiState((s) => !s.composer.isEmpty && !s.thread.isRunning);
   const [isSending, setIsSending] = useState(false);
@@ -86,8 +87,9 @@ const WelcomeComposer: FC<{ onSend?: () => void }> = ({ onSend }) => {
     lockRef.current = true;
     setIsSending(true);
     try {
+      const remoteId = preGenerateThreadId();
       aui.composer().send();
-      onSend?.();
+      onSend?.(remoteId);
     } catch {
       lockRef.current = false;
       setIsSending(false);
