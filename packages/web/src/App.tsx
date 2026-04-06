@@ -53,8 +53,17 @@ function useRestoreThreadFromUrl() {
   const remoteId = useAuiState((s) => s.threadListItem.remoteId) as string | undefined;
   const isLoading = useAuiState((s) => s.threads.isLoading);
   const restoreAttemptId = useRef<string | null>(null);
+  const prevRemoteIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    const remoteIdChanged = remoteId !== prevRemoteIdRef.current;
+    prevRemoteIdRef.current = remoteId;
+
+    // When remoteId just changed (user clicked a thread), the URL hasn't
+    // caught up yet. Let useRuntimeUrlSync handle the URL update instead
+    // of incorrectly switching back to the stale URL's thread.
+    if (remoteIdChanged) return;
+
     const urlThreadId = threadIdFromPath(location.pathname);
     if (!urlThreadId || urlThreadId === remoteId) return;
     if (isLoading) return;
