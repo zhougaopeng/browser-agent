@@ -178,3 +178,13 @@ body,
   border-color: oklch(1 0 0 / 15%);
   background-color: oklch(0.22 0 0);
 }
+
+/* Electron titleBarStyle: hidden — drag regions */
+.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}

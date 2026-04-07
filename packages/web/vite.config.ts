@@ -11,6 +11,7 @@ import path from "node:path";
 import archiver from "archiver";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { uuidv7 } from "uuidv7";
 import { type Plugin, defineConfig } from "vite";
 
 function contentHash(distDir: string): string {
@@ -27,7 +28,7 @@ function contentHash(distDir: string): string {
     }
   };
   walk(distDir);
-  return hash.digest("hex").slice(0, 8);
+  return hash.digest("hex").slice(0, 16);
 }
 
 function buildRelease(): Plugin {
@@ -37,8 +38,9 @@ function buildRelease(): Plugin {
       const distDir = path.resolve(__dirname, "dist");
       const releaseDir = path.resolve(__dirname, "release");
       const short = contentHash(distDir);
+      const version = uuidv7(); // time-ordered, lexicographically comparable
       const zipName = `web-${short}.zip`;
-      const versionInfo = { hash: short, zipFileName: zipName };
+      const versionInfo = { hash: short, zipFileName: zipName, version };
 
       writeFileSync(path.join(distDir, "version.json"), JSON.stringify(versionInfo, null, 2));
 
@@ -58,7 +60,7 @@ function buildRelease(): Plugin {
         archive.finalize();
       });
 
-      console.log(`\x1b[32m  release/${zipName} (hash: ${short})\x1b[0m`);
+      console.log(`\x1b[32m  release/${zipName} (hash: ${short}, version: ${version})\x1b[0m`);
     },
   };
 }

@@ -27,7 +27,11 @@ export async function generateTitle(
   }
 
   if (threadId) {
-    await renameThread(app, threadId, title);
+    try {
+      await renameThread(app, threadId, title);
+    } catch (err) {
+      console.warn("[title] Failed to rename thread (thread may not exist):", err);
+    }
   }
 
   return title;

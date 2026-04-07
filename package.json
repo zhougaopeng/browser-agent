@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,electron \"pnpm -F @browser-agent/web dev\" \"wait-on http://localhost:5173 && pnpm -F @browser-agent/electron dev\"",
+    "dev": "concurrently -n web,electron \"pnpm -F @browser-agent/web dev\" \"wait-on http://localhost:5173 && FRONTEND_DEV_URL=http://localhost:5173 pnpm -F @browser-agent/electron dev\"",
+    "dev:local": "pnpm -F @browser-agent/web build && FRONTEND_DIST_OVERRIDE=$(pwd)/packages/web/dist pnpm -F @browser-agent/electron dev",
     "dev:server": "pnpm -F @browser-agent/server dev",
     "dev:web": "pnpm -F @browser-agent/web dev",
     "build": "pnpm -F @browser-agent/server build && pnpm -F @browser-agent/web build",
