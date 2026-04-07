@@ -8,7 +8,7 @@ import {
 import { CheckIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { remoteToLocalMap, threadSwitchers } from "@/lib/thread-adapter";
+import { threadSwitchers } from "@/lib/thread-adapter";
 
 interface ThreadListProps {
   onNewThread?: () => void;
@@ -80,12 +80,7 @@ const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () =
   const aui = useAui();
   const [isEditing, setIsEditing] = useState(false);
   const title = useAuiState((s) => s.threadListItem.title ?? "");
-  const localId = useAuiState((s) => s.threadListItem.id);
   const itemRemoteId = useAuiState((s) => s.threadListItem.remoteId) as string | undefined;
-
-  if (itemRemoteId) {
-    remoteToLocalMap.set(itemRemoteId, localId);
-  }
 
   useEffect(() => {
     if (!itemRemoteId) return;
@@ -96,24 +91,24 @@ const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () =
   }, [itemRemoteId, aui]);
 
   return (
-    <ThreadListItemPrimitive.Root
-      className="aui-thread-list-item group relative flex h-9 items-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:outline-none data-active:bg-sidebar-accent"
-      onClick={() => {
-        if (itemRemoteId) onClick?.(itemRemoteId);
-      }}
-    >
+    <ThreadListItemPrimitive.Root className="aui-thread-list-item group relative flex h-9 items-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:outline-none data-active:bg-sidebar-accent">
       {isEditing ? (
         <ThreadListItemTitleEditor onClose={() => setIsEditing(false)} />
       ) : (
         <>
-          <ThreadListItemPrimitive.Trigger
+          <button
+            type="button"
             className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center px-3 text-start text-sm text-sidebar-foreground/80"
             title={title || "新对话"}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (itemRemoteId) onClick?.(itemRemoteId);
+            }}
           >
             <span className="aui-thread-list-item-title min-w-0 flex-1 truncate">
               <ThreadListItemPrimitive.Title fallback="新对话" />
             </span>
-          </ThreadListItemPrimitive.Trigger>
+          </button>
           <ThreadListItemActions onEdit={() => setIsEditing(true)} onDelete={onDelete} />
         </>
       )}

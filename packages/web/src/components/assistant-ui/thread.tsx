@@ -39,11 +39,13 @@ export const Thread: FC = () => {
         turnAnchor="top"
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-8"
       >
-        <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
+        <div className="flex flex-col flex-1">
+          <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
 
-        <AuiIf condition={(s) => s.thread.isRunning}>
-          <AssistantLoading />
-        </AuiIf>
+          <AuiIf condition={(s) => s.thread.isRunning}>
+            <AssistantLoading />
+          </AuiIf>
+        </div>
 
         <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-6 md:pb-8">
           <ThreadScrollToBottom />
@@ -228,8 +230,6 @@ const UserMessage: FC = () => {
           <MessagePrimitive.Parts />
         </div>
       </div>
-
-      <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-3 -mr-1 justify-end" />
     </MessagePrimitive.Root>
   );
 };

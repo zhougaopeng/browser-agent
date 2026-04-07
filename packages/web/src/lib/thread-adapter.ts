@@ -10,13 +10,6 @@ import { api } from "../api/adapter";
 export const threadIdMap = new Map<string, string>();
 
 /**
- * Reverse map: server-side remoteId → assistant-ui localId.
- * Used by the router to look up which local thread to activate for a given URL.
- * Populated from ThreadListItem rendering (existing threads) and initialize() (new threads).
- */
-export const remoteToLocalMap = new Map<string, string>();
-
-/**
  * Stores switchTo functions from each ThreadListItem's context.
  * Keyed by remoteId, each function calls the item's own aui.threadListItem().switchTo().
  * Used for URL-based thread restoration on page refresh.
@@ -97,7 +90,6 @@ export function createThreadListAdapter(): RemoteThreadListAdapter {
       const id = pendingRemoteId ?? uuidv7();
       pendingRemoteId = null;
       threadIdMap.set(localId, id);
-      remoteToLocalMap.set(id, localId);
       return { remoteId: id, externalId: id };
     },
 

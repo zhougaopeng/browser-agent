@@ -18,12 +18,12 @@ export function createBrowserAgent(browserTools: ToolsInput, modelId: string): A
     },
     memory: new Memory({
       options: {
-        lastMessages: 20,
+        lastMessages: 30,
         generateTitle: false,
       },
     }),
     defaultOptions: {
-      maxSteps: 50,
+      maxSteps: 30,
       autoResumeSuspendedTools: true,
     },
   });

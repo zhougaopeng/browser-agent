@@ -2,8 +2,8 @@ import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
 import { handleChatStream } from "@mastra/ai-sdk";
 import { createUIMessageStreamResponse } from "ai";
 import { uuidv7 } from "uuidv7";
+import { resetLoopState } from "../agent/browser-tools";
 import { buildThinkingProviderOptions, detectThinkingSupport } from "../agent/thinking-utils";
-
 import { AgentTracer } from "../agent/tracer";
 import type { AppInstance } from "../index";
 
@@ -21,6 +21,8 @@ export async function createChatStream(
   params: ChatStreamHandlerParams & { id?: string },
 ): Promise<CreateChatStreamResult> {
   const threadId = params.id ?? uuidv7();
+
+  resetLoopState();
 
   const catalog = app.skillManager.buildCatalog(await app.skillManager.scanAll());
   const agentInstance = app.mastra.getAgent("browserAgent");
