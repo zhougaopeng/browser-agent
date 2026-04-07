@@ -7,6 +7,7 @@ import {
 } from "@assistant-ui/react";
 import { CheckIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { threadSwitchers } from "@/lib/thread-adapter";
 
@@ -23,28 +24,41 @@ export const ThreadList: FC<ThreadListProps> = ({
   onDeleteThread,
   slotAfterNew,
 }) => {
+  const location = useLocation();
+  const isInSettings = location.pathname === "/settings";
+  const isInChat = location.pathname.startsWith("/chat/");
+
   return (
     <ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col gap-1">
-      <ThreadListNew onClick={onNewThread} />
+      <ThreadListNew onClick={onNewThread} isInSettings={isInSettings} />
       {slotAfterNew}
       <AuiIf condition={(s) => s.threads.isLoading}>
         <ThreadListSkeleton />
       </AuiIf>
       <AuiIf condition={(s) => !s.threads.isLoading}>
         <ThreadListPrimitive.Items>
-          {() => <ThreadListItem onClick={onSelectThread} onDelete={onDeleteThread} />}
+          {() => (
+            <ThreadListItem
+              onClick={onSelectThread}
+              onDelete={onDeleteThread}
+              isInChat={isInChat}
+            />
+          )}
         </ThreadListPrimitive.Items>
       </AuiIf>
     </ThreadListPrimitive.Root>
   );
 };
 
-const ThreadListNew: FC<{ onClick?: () => void }> = ({ onClick }) => {
+const ThreadListNew: FC<{ onClick?: () => void; isInSettings?: boolean }> = ({
+  onClick,
+  isInSettings,
+}) => {
   return (
     <ThreadListPrimitive.New asChild>
       <button
         type="button"
-        className="aui-thread-list-new flex h-9 w-full items-center justify-start gap-2 rounded-lg border border-sidebar-border px-3 text-sm text-sidebar-foreground hover:bg-sidebar-accent data-active:bg-sidebar-accent"
+        className={`aui-thread-list-new flex h-9 w-full items-center justify-start gap-2 rounded-lg border border-sidebar-border px-3 text-sm text-sidebar-foreground hover:bg-sidebar-accent${!isInSettings ? " data-active:bg-sidebar-accent" : ""}`}
         onClick={onClick}
       >
         <PlusIcon className="size-4" />
@@ -73,10 +87,11 @@ const ThreadListSkeleton: FC = () => {
   );
 };
 
-const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () => void }> = ({
-  onClick,
-  onDelete,
-}) => {
+const ThreadListItem: FC<{
+  onClick?: (remoteId: string) => void;
+  onDelete?: () => void;
+  isInChat?: boolean;
+}> = ({ onClick, onDelete, isInChat }) => {
   const aui = useAui();
   const [isEditing, setIsEditing] = useState(false);
   const title = useAuiState((s) => s.threadListItem.title ?? "");
@@ -91,7 +106,9 @@ const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () =
   }, [itemRemoteId, aui]);
 
   return (
-    <ThreadListItemPrimitive.Root className="aui-thread-list-item group relative flex h-9 items-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:outline-none data-active:bg-sidebar-accent">
+    <ThreadListItemPrimitive.Root
+      className={`aui-thread-list-item group relative flex h-9 items-center rounded-lg transition-colors hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:outline-none${isInChat ? " data-active:bg-sidebar-accent" : ""}`}
+    >
       {isEditing ? (
         <ThreadListItemTitleEditor onClose={() => setIsEditing(false)} />
       ) : (
@@ -109,7 +126,11 @@ const ThreadListItem: FC<{ onClick?: (remoteId: string) => void; onDelete?: () =
               <ThreadListItemPrimitive.Title fallback="新对话" />
             </span>
           </button>
-          <ThreadListItemActions onEdit={() => setIsEditing(true)} onDelete={onDelete} />
+          <ThreadListItemActions
+            onEdit={() => setIsEditing(true)}
+            onDelete={onDelete}
+            isInChat={isInChat}
+          />
         </>
       )}
     </ThreadListItemPrimitive.Root>
@@ -173,10 +194,11 @@ const ThreadListItemTitleEditor: FC<{ onClose: () => void }> = ({ onClose }) => 
   );
 };
 
-const ThreadListItemActions: FC<{ onEdit: () => void; onDelete?: () => void }> = ({
-  onEdit,
-  onDelete,
-}) => {
+const ThreadListItemActions: FC<{
+  onEdit: () => void;
+  onDelete?: () => void;
+  isInChat?: boolean;
+}> = ({ onEdit, onDelete, isInChat }) => {
   const aui = useAui();
   const isActive = useAuiState((s) => s.threads.mainThreadId === s.threadListItem.id);
 
@@ -187,7 +209,9 @@ const ThreadListItemActions: FC<{ onEdit: () => void; onDelete?: () => void }> =
   };
 
   return (
-    <div className="absolute right-0 mr-2 hidden items-center gap-0.5 rounded-md bg-sidebar-accent group-hover:flex group-data-active:flex">
+    <div
+      className={`absolute right-0 mr-2 hidden items-center gap-0.5 rounded-md bg-sidebar-accent group-hover:flex${isInChat ? " group-data-active:flex" : ""}`}
+    >
       <button
         type="button"
         className="flex size-7 items-center justify-center rounded-md p-0 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
