@@ -1,5 +1,6 @@
 appId: com.browser-agent.app
 productName: Browser Agent
+electronVersion: "37.10.3"
 directories:
   buildResources: build
 files:
@@ -20,6 +21,8 @@ mac:
 win:
   target:
     - nsis
+  artifactName: "${name}-${version}-${arch}.${ext}"
 linux:
   target:
     - AppImage
+  artifactName: "${name}-${version}-${arch}.${ext}"
