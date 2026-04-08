@@ -16,7 +16,7 @@
     "build:web": "npm run build -w @browser-agent/web",
     "build:electron": "npm run build -w @browser-agent/electron",
     "package": "npm run build:zip -w @browser-agent/web && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist && npm run package -w @browser-agent/electron",
-    "package:local": "npm run build -w @browser-agent/server && npm run build:zip -w @browser-agent/web && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist && CSC_IDENTITY_AUTO_DISCOVERY=false npm run build -w @browser-agent/electron && CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -w @browser-agent/electron",
+    "package:local": "npm run build:electron -w @browser-agent/server && npm run build:zip -w @browser-agent/web && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist && CSC_IDENTITY_AUTO_DISCOVERY=false npm run build -w @browser-agent/electron && CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -w @browser-agent/electron",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",

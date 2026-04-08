@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Build server
-        run: npm run build -w @browser-agent/server
+        run: npm run build:electron -w @browser-agent/server
 
       - name: Build web
         run: npm run build:zip -w @browser-agent/web

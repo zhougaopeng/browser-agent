@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsup",
+    "build:electron": "tsup --config tsup.config.electron.ts",
     "start": "node dist/server.js"
   },
   "dependencies": {
