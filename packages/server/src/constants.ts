@@ -1,1 +1,1 @@
-export const STORAGE_ID = "mastra-storage";
+export { STORAGE_ID } from "@browser-agent/shared";

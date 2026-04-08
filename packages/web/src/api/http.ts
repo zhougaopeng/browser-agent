@@ -1,9 +1,10 @@
+import { SERVER_BASE_URL } from "@browser-agent/shared";
 import { DefaultChatTransport } from "ai";
 import type { AppSettings } from "../env";
 import { threadIdMap } from "../lib/thread-adapter";
 import type { ApiAdapter } from "./adapter";
 
-const BASE = "http://localhost:3100/api";
+const BASE = SERVER_BASE_URL;
 
 export function createHttpAdapter(): ApiAdapter {
   return {

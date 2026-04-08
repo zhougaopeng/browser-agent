@@ -139,14 +139,6 @@ export function getActiveFrontend(): LocalFrontend | null {
   return null;
 }
 
-/**
- * @deprecated Use getActiveFrontend() for version-aware selection.
- * Kept for backward compatibility with the protocol handler in index.ts.
- */
-export function getActiveFrontendDir(): string | null {
-  return getActiveFrontend()?.dir ?? null;
-}
-
 // ---------------------------------------------------------------------------
 // Load helpers
 // ---------------------------------------------------------------------------
@@ -157,7 +149,7 @@ export function loadSplash(win: BrowserWindow): void {
 
 export function loadFrontend(win: BrowserWindow): void {
   // When an explicit local dist is provided, skip the dev-server URL so that
-  // the hanker:// custom-protocol path is used instead.
+  // the browser:// custom-protocol path is used instead.
   if (!process.env.FRONTEND_DIST_OVERRIDE) {
     const devUrl = process.env.FRONTEND_DEV_URL || process.env.ELECTRON_RENDERER_URL;
     if (devUrl) {
@@ -167,7 +159,7 @@ export function loadFrontend(win: BrowserWindow): void {
   }
 
   if (getActiveFrontend()) {
-    win.loadURL("hanker://frontend/");
+    win.loadURL("browser://frontend/");
     return;
   }
 
@@ -195,7 +187,9 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
     const versionUrl = `${baseUrl}/version.json`;
     console.log(`${TAG} Checking for updates: ${versionUrl}`);
 
-    const res = await fetch(versionUrl);
+    // Add a timestamp param to bust CDN/proxy caches, and set cache: 'no-store'
+    // to prevent Chromium's own network cache from returning a stale response.
+    const res = await fetch(`${versionUrl}?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) {
       console.log(`${TAG} Version check returned ${res.status}, skipping`);
       return null;

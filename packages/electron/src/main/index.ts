@@ -1,12 +1,7 @@
 import path from "node:path";
 import { type ChatStreamHandlerParams, createApp, createChatResponse } from "@browser-agent/server";
 import { app, net, protocol } from "electron";
-import {
-  checkForUpdate,
-  downloadUpdate,
-  getActiveFrontendDir,
-  loadFrontend,
-} from "./frontend-loader";
+import { checkForUpdate, downloadUpdate, getActiveFrontend, loadFrontend } from "./frontend-loader";
 import { setupSettingsIPC } from "./ipc/settings";
 import { setupThreadsIPC } from "./ipc/threads";
 import { createMainWindow } from "./windows";
@@ -17,13 +12,27 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, supportFetchAPI: true, stream: true },
   },
   {
-    scheme: "hanker",
+    scheme: "browser",
     privileges: { standard: true, supportFetchAPI: true },
   },
 ]);
 
 app.whenReady().then(async () => {
-  const mainWindow = createMainWindow();
+  protocol.handle("browser", (request) => {
+    const url = new URL(request.url);
+    let pathname = decodeURIComponent(url.pathname);
+
+    if (pathname === "/" || !path.extname(pathname)) {
+      pathname = "/index.html";
+    }
+
+    const frontendDir = getActiveFrontend()?.dir ?? null;
+    if (!frontendDir) {
+      return new Response("Frontend not found", { status: 404 });
+    }
+
+    return net.fetch(`file://${path.join(frontendDir, pathname)}`);
+  });
 
   const appPromise = createApp({
     dataDir: app.getPath("userData"),
@@ -32,61 +41,8 @@ app.whenReady().then(async () => {
       : require("node:path").join(__dirname, "../../../../packages/server/overlay-init.js"),
   });
 
-  setupSettingsIPC(mainWindow, appPromise);
-  setupThreadsIPC(appPromise);
-
-  protocol.handle("hanker", (request) => {
-    const url = new URL(request.url);
-    let pathname = decodeURIComponent(url.pathname);
-
-    if (pathname === "/" || !path.extname(pathname)) {
-      pathname = "/index.html";
-    }
-
-    const frontendDir = getActiveFrontendDir();
-    if (!frontendDir) {
-      return new Response("Frontend not found", { status: 404 });
-    }
-
-    return net.fetch(`file://${path.join(frontendDir, pathname)}`);
-  });
-
-  // Two independent paths run in parallel:
-  // 1) Frontend: load best local version immediately → background update check
-  // 2) Server:   createApp resolve → protocol handler registration
-  const frontendReady = (async () => {
-    // Step 1: Load the best available local version right away (no network wait)
-    loadFrontend(mainWindow);
-
-    if (!app.isPackaged) {
-      mainWindow.webContents.openDevTools({ mode: "detach" });
-    }
-
-    // Step 2: Check for remote updates in the background
-    const devUrl = process.env.FRONTEND_DEV_URL || process.env.ELECTRON_RENDERER_URL;
-    if (!devUrl) {
-      // Fire-and-forget: do not await so app startup is not blocked
-      checkForUpdate()
-        .then(async (update) => {
-          if (!update) return;
-
-          console.log(`[index] Downloading frontend update ${update.version}...`);
-          await downloadUpdate(update);
-
-          // Notify the frontend that a new version is ready — let the user
-          // decide when to restart rather than force-reloading.
-          mainWindow.webContents.send("frontend:update-ready", { version: update.version });
-          console.log(`[index] Frontend update ready: ${update.version}`);
-        })
-        .catch((err) => {
-          // Background update errors are non-fatal; log and move on.
-          console.error("[index] Background update failed:", err);
-        });
-    }
-  })();
-
   const corsHeaders = {
-    "Access-Control-Allow-Origin": "hanker://.",
+    "Access-Control-Allow-Origin": "browser://.",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
@@ -134,9 +90,45 @@ app.whenReady().then(async () => {
     }
   });
 
-  const serverReady = appPromise;
+  const mainWindow = createMainWindow();
+  setupSettingsIPC(mainWindow, appPromise);
+  setupThreadsIPC(appPromise);
 
-  await Promise.all([frontendReady, serverReady]);
+  // Two independent paths run in parallel:
+  // 1) Frontend: load best local version immediately → background update check
+  // 2) Server:   createApp resolve → protocol handler registration
+  const frontendReady = (async () => {
+    // Step 1: Load the best available local version right away (no network wait)
+    loadFrontend(mainWindow);
+
+    if (!app.isPackaged) {
+      mainWindow.webContents.openDevTools({ mode: "detach" });
+    }
+
+    // Step 2: Check for remote updates in the background
+    const devUrl = process.env.FRONTEND_DEV_URL || process.env.ELECTRON_RENDERER_URL;
+    if (!devUrl) {
+      // Fire-and-forget: do not await so app startup is not blocked
+      checkForUpdate()
+        .then(async (update) => {
+          if (!update) return;
+
+          console.log(`[index] Downloading frontend update ${update.version}...`);
+          await downloadUpdate(update);
+
+          // Notify the frontend that a new version is ready — let the user
+          // decide when to restart rather than force-reloading.
+          mainWindow.webContents.send("frontend:update-ready", { version: update.version });
+          console.log(`[index] Frontend update ready: ${update.version}`);
+        })
+        .catch((err) => {
+          // Background update errors are non-fatal; log and move on.
+          console.error("[index] Background update failed:", err);
+        });
+    }
+  })();
+
+  await Promise.all([frontendReady, appPromise]);
 });
 
 app.on("before-quit", async () => {

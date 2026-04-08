@@ -9,6 +9,8 @@ files:
   - "!electron.vite.config.*"
   - "!{tsconfig.json,tsconfig.node.json}"
 extraResources:
+  - from: ../../packages/server/overlay-init.js
+    to: overlay-init.js
   - from: frontend-dist
     to: frontend-dist
     filter:

@@ -11,6 +11,7 @@
     "fetch-frontend": "tsx ../../scripts/fetch-frontend.mts"
   },
   "dependencies": {
+    "@browser-agent/shared": "*",
     "@browser-agent/server": "*",
     "extract-zip": "^2.0.1"
   },

@@ -1,30 +1,10 @@
-export interface AppSettings {
-  model: {
-    provider: string;
-    name: string;
-    apiKey: string;
-    titleModelName: string;
-    thinking: {
-      enabled: boolean;
-      budgetTokens: number;
-      providerHint: "auto" | "anthropic" | "google";
-    };
-  };
-  browser: {
-    headless: boolean;
-    browser: "chrome" | "firefox" | "webkit";
-    executablePath?: string;
-    userDataDir?: string;
-  };
-  skills: {
-    directory: string;
-  };
-}
+export type { AppSettings } from "@browser-agent/shared";
 
 interface ElectronAPI {
   settings: {
-    get(): Promise<AppSettings>;
+    get(): Promise<import("@browser-agent/shared").AppSettings>;
     set(key: string, value: unknown): Promise<void>;
+    onChanged(cb: (settings: unknown) => void): () => void;
   };
   threads: {
     create(params?: { title?: string }): Promise<import("./api/adapter").ThreadRecord>;

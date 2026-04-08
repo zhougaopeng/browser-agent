@@ -44,6 +44,10 @@ jobs:
 
       - name: Build electron
         run: npm run build -w @browser-agent/electron
+        env:
+          # Baked into the main-process bundle at build time via electron.vite.config.ts define().
+          # Set FRONTEND_BUNDLE_URL in repo Settings → Secrets and variables → Actions.
+          FRONTEND_BUNDLE_URL: ${{ secrets.FRONTEND_BUNDLE_URL }}
 
       - name: Package & publish to GitHub Release
         run: npm run package -w @browser-agent/electron -- --publish always

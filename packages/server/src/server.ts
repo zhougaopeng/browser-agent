@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
+import { SERVER_PORT } from "@browser-agent/shared";
 import { createApp } from "./index";
 import { handleChatRoute } from "./routes/chat";
 import { handleSettingsRoute } from "./routes/settings";
 import { handleThreadsRoute } from "./routes/threads";
 
-const PORT = Number(process.env.PORT) || 3100;
+const PORT = SERVER_PORT;
 
 async function main() {
   console.log("[server] Starting Mastra agent... DATA_DIR: ", process.env.DATA_DIR);
