@@ -136,22 +136,17 @@ function WaitForUserUI({
   const reason = String(args?.reason ?? "等待用户操作");
   const isWaiting = status?.type === "running" || status?.type === "requires-action";
 
-  if (!isWaiting) {
-    return (
-      <div className="rounded-lg border border-green-200 bg-green-50/50 px-3 py-2 text-xs text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-        <span className="mr-1">✓</span>
-        用户操作已完成
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-lg border border-amber-300/30 bg-amber-50/30 px-3 py-2.5 dark:border-amber-700/30 dark:bg-amber-900/10">
       <div className="flex items-center gap-2">
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-500 opacity-75" />
-          <span className="relative inline-flex size-2 rounded-full bg-amber-500" />
-        </span>
+        {isWaiting ? (
+          <span className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-500 opacity-75" />
+            <span className="relative inline-flex size-2 rounded-full bg-amber-500" />
+          </span>
+        ) : (
+          <span className="inline-flex size-2 rounded-full bg-amber-500" />
+        )}
         <span className="text-xs font-medium text-amber-600 dark:text-amber-400">等待用户操作</span>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{reason}</p>

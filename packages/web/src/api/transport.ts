@@ -5,7 +5,7 @@ import { pendingThreadIds, threadIdMap } from "../lib/thread-adapter";
 export class BrowserAgentTransport<T extends UIMessage> extends DefaultChatTransport<T> {
   async sendMessages({ abortSignal, ...options }: Parameters<ChatTransport<T>["sendMessages"]>[0]) {
     const chatId = options.chatId;
-    const isNew = chatId.startsWith("__LOCALID_");
+    const isNew = chatId.startsWith("__LOCALID_") && !threadIdMap.has(chatId);
 
     if (isNew) {
       pendingThreadIds.set(chatId, Promise.withResolvers<string>());
@@ -15,11 +15,22 @@ export class BrowserAgentTransport<T extends UIMessage> extends DefaultChatTrans
     const resolvedHeaders = await resolve(this.headers);
     const resolvedCredentials = await resolve(this.credentials);
 
+    // For "submit-message", server-side MessageHistory processor loads conversation
+    // history from storage, so we only need to send the new user message.
+    // For "regenerate-message", send the last two messages (user + assistant being
+    // regenerated) so handleChatStream can extract lastMessageId.
+    const messages =
+      options.trigger === "submit-message"
+        ? options.messages.slice(-1)
+        : options.trigger === "regenerate-message"
+          ? options.messages.slice(-2)
+          : options.messages;
+
     const body = {
       ...resolvedBody,
       ...options.body,
       ...(isNew ? {} : { id: threadIdMap.get(chatId) ?? chatId }),
-      messages: options.messages,
+      messages,
       trigger: options.trigger,
       messageId: options.messageId,
     };
