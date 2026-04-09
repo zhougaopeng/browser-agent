@@ -1,11 +1,10 @@
 import type { RemoteThreadListAdapter } from "@assistant-ui/react";
-import { uuidv7 } from "uuidv7";
 import { api } from "../api/adapter";
 
 /**
  * Maps assistant-ui local thread IDs to server-side thread IDs.
- * Populated synchronously when adapter.initialize() resolves, so the
- * chat transport can look up the correct server ID before React re-renders.
+ * Populated by BrowserAgentTransport when the server responds with
+ * X-Thread-Id, so subsequent requests use the real server ID.
  */
 export const threadIdMap = new Map<string, string>();
 
@@ -16,17 +15,12 @@ export const threadIdMap = new Map<string, string>();
  */
 export const threadSwitchers = new Map<string, () => void>();
 
-let pendingRemoteId: string | null = null;
-
 /**
- * Pre-generate the remoteId for the next thread before calling send().
- * This allows the caller to navigate to /chat/:remoteId immediately
- * instead of waiting for the async initialize() to complete.
+ * Bridge between BrowserAgentTransport.sendMessages() and adapter.initialize().
+ * Transport creates & resolves the Promise; initialize() awaits it to get
+ * the backend-generated thread ID.
  */
-export function preGenerateThreadId(): string {
-  pendingRemoteId = uuidv7();
-  return pendingRemoteId;
-}
+export const pendingThreadIds = new Map<string, PromiseWithResolvers<string>>();
 
 function createTitleStream(title: string): ReadableStream {
   return new ReadableStream({
@@ -87,9 +81,17 @@ export function createThreadListAdapter(): RemoteThreadListAdapter {
     },
 
     async initialize(localId: string) {
-      const id = pendingRemoteId ?? uuidv7();
-      pendingRemoteId = null;
-      threadIdMap.set(localId, id);
+      if (localId.startsWith("__LOCALID_")) {
+        let pending = pendingThreadIds.get(localId);
+        if (!pending) {
+          pending = Promise.withResolvers<string>();
+          pendingThreadIds.set(localId, pending);
+        }
+        const realId = await pending.promise;
+        pendingThreadIds.delete(localId);
+        return { remoteId: realId, externalId: realId };
+      }
+      const id = threadIdMap.get(localId) ?? localId;
       return { remoteId: id, externalId: id };
     },
 

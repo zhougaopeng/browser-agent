@@ -1,6 +1,7 @@
 export {
   type ChatStreamHandlerParams,
   type CreateChatStreamResult,
+  cancelChat,
   createChatResponse,
   createChatStream,
 } from "./chat";

@@ -14,6 +14,18 @@ export interface CreateChatStreamResult {
   threadId: string;
 }
 
+const activeControllers = new Map<string, AbortController>();
+
+export function cancelChat(threadId: string): boolean {
+  const controller = activeControllers.get(threadId);
+  if (controller) {
+    controller.abort();
+    activeControllers.delete(threadId);
+    return true;
+  }
+  return false;
+}
+
 let tracer: AgentTracer | null = null;
 
 export async function createChatStream(
@@ -58,6 +70,9 @@ export async function createChatStream(
       ` budgetTokens=${budgetTokens} providerOptions=${JSON.stringify(providerOptions ?? null)}`,
   );
 
+  const controller = new AbortController();
+  activeControllers.set(threadId, controller);
+
   const stream = await handleChatStream({
     mastra: app.mastra,
     agentId: "browserAgent",
@@ -72,11 +87,13 @@ export async function createChatStream(
       },
       instructions: `${instructions}${catalog}`,
       providerOptions,
+      abortSignal: controller.signal,
       onStepFinish: (event: unknown) => {
         t.onStepFinish(event as Parameters<AgentTracer["onStepFinish"]>[0]);
         app.overlayController.handleStep(event);
       },
       onFinish: () => {
+        activeControllers.delete(threadId);
         app.overlayController.hide();
       },
     },

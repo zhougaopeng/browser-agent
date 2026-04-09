@@ -1,8 +1,10 @@
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { createWriteStream } from "node:fs";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { Writable } from "node:stream";
 import { app, type BrowserWindow } from "electron";
 import extract from "extract-zip";
+import { compareVersions, getFrontendDir, isSameHash, type VersionJson } from "./util";
 
 interface VersionInfo {
   hash: string;
@@ -33,137 +35,11 @@ export type ProgressCallback = (status: ProgressStatus) => void;
 const TAG = "[frontend-loader]";
 
 // ---------------------------------------------------------------------------
-// Paths
-// ---------------------------------------------------------------------------
-
-export function getFrontendDir(): string {
-  // Allow overriding in local dev (avoids copying to userData)
-  if (process.env.FRONTEND_DIST_OVERRIDE) {
-    return process.env.FRONTEND_DIST_OVERRIDE;
-  }
-  return path.join(app.getPath("userData"), "frontend-dist");
-}
-
-function getBundledFrontendDir(): string | null {
-  if (!app.isPackaged) return null;
-  return path.join(process.resourcesPath, "frontend-dist");
-}
-
-// ---------------------------------------------------------------------------
-// Version helpers
-// ---------------------------------------------------------------------------
-
-function readVersionJson(dir: string): VersionInfo | null {
-  const file = path.join(dir, "version.json");
-  if (!existsSync(file)) return null;
-  try {
-    return JSON.parse(readFileSync(file, "utf-8"));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Compare two UUIDv7 version strings.
- * UUIDv7 encodes a millisecond timestamp in its most-significant bits, so
- * lexicographic string order is equivalent to chronological order.
- *
- * Returns  1 if a is newer than b
- * Returns -1 if a is older  than b
- * Returns  0 if they are equal
- */
-function compareVersions(a: string, b: string): number {
-  return a > b ? 1 : a < b ? -1 : 0;
-}
-
-// ---------------------------------------------------------------------------
-// Core: select best local frontend
-// ---------------------------------------------------------------------------
-
-interface LocalFrontend {
-  dir: string;
-  version: VersionInfo;
-  source: "userData" | "bundled";
-}
-
-/**
- * Returns the best available local frontend directory by comparing version
- * numbers between the userData copy and the bundled copy.
- * Falls back to whichever copy is available if the other is missing.
- */
-export function getActiveFrontend(): LocalFrontend | null {
-  // Fast-path: explicit local dist override (e.g. FRONTEND_DIST_OVERRIDE=packages/web/dist)
-  // index.html must exist; version.json is not required.
-  const overrideDir = process.env.FRONTEND_DIST_OVERRIDE;
-  if (overrideDir && existsSync(path.join(overrideDir, "index.html"))) {
-    return {
-      dir: overrideDir,
-      version: { hash: "dev", zipFileName: "", version: "dev-override" },
-      source: "userData",
-    };
-  }
-
-  const userDataDir = getFrontendDir();
-  const bundledDir = getBundledFrontendDir();
-
-  const userDataVersion = existsSync(path.join(userDataDir, "index.html"))
-    ? readVersionJson(userDataDir)
-    : null;
-
-  const bundledVersion =
-    bundledDir && existsSync(path.join(bundledDir, "index.html"))
-      ? readVersionJson(bundledDir)
-      : null;
-
-  // Both available: pick the one with higher version number
-  if (userDataVersion && bundledVersion && bundledDir) {
-    const cmp = compareVersions(userDataVersion.version, bundledVersion.version);
-    if (cmp >= 0) {
-      // userData is same or newer — prefer userData
-      return { dir: userDataDir, version: userDataVersion, source: "userData" };
-    } else {
-      // Bundled is newer (e.g. app was upgraded): use bundled, and schedule
-      // cleanup of the stale userData copy so it won't shadow newer versions.
-      console.log(
-        `${TAG} Bundled version (${bundledVersion.version}) > userData version (${userDataVersion.version}). Using bundled.`,
-      );
-      rmSync(userDataDir, { recursive: true, force: true });
-      return { dir: bundledDir, version: bundledVersion, source: "bundled" };
-    }
-  }
-
-  if (userDataVersion) return { dir: userDataDir, version: userDataVersion, source: "userData" };
-  if (bundledVersion && bundledDir)
-    return { dir: bundledDir, version: bundledVersion, source: "bundled" };
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Load helpers
 // ---------------------------------------------------------------------------
 
 export function loadSplash(win: BrowserWindow): void {
   win.loadFile(path.join(__dirname, "../renderer/index.html"));
-}
-
-export function loadFrontend(win: BrowserWindow): void {
-  // When an explicit local dist is provided, skip the dev-server URL so that
-  // the browser:// custom-protocol path is used instead.
-  if (!process.env.FRONTEND_DIST_OVERRIDE) {
-    const devUrl = process.env.FRONTEND_DEV_URL || process.env.ELECTRON_RENDERER_URL;
-    if (devUrl) {
-      win.loadURL(devUrl);
-      return;
-    }
-  }
-
-  if (getActiveFrontend()) {
-    win.loadURL("browser://frontend/");
-    return;
-  }
-
-  win.loadURL("data:text/html,<h2>Frontend not found. Run pnpm build:web first.</h2>");
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +55,9 @@ function getBaseUrl(): string | null {
  * Checks the remote version.json against the currently active local version.
  * Returns UpdateInfo if an update is available, or null otherwise.
  */
-export async function checkForUpdate(): Promise<UpdateInfo | null> {
+export async function checkForUpdate(
+  targetFrontendVersion: VersionJson | null,
+): Promise<UpdateInfo | null> {
   const baseUrl = getBaseUrl();
   if (!baseUrl) return null;
 
@@ -198,15 +76,28 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
     const remote: VersionInfo = await res.json();
 
     // Compare against the version that is actually loaded
-    const active = getActiveFrontend();
-    const localVersion = active?.version.version ?? null;
+    const activeVersion = targetFrontendVersion;
+    if (activeVersion) {
+      if (isSameHash(activeVersion.hash, remote.hash)) {
+        return null;
+      }
 
-    if (localVersion && compareVersions(localVersion, remote.version) >= 0) {
-      console.log(`${TAG} Already up to date (${localVersion})`);
+      if (compareVersions(remote.version, activeVersion.version) > 0) {
+        console.log(
+          `${TAG} Update available: ${activeVersion.version ?? "none"} → ${remote.version}`,
+        );
+        return {
+          hash: remote.hash,
+          zipFileName: remote.zipFileName,
+          zipUrl: `${baseUrl}/${remote.zipFileName}`,
+          version: remote.version,
+        };
+      }
+
       return null;
     }
 
-    console.log(`${TAG} Update available: ${localVersion ?? "none"} → ${remote.version}`);
+    console.log(`${TAG} Update available: ${remote.version}`);
 
     return {
       hash: remote.hash,
@@ -248,7 +139,7 @@ export async function downloadUpdate(
 
   const tmpDir = path.join(app.getPath("temp"), "browser-agent-update");
   const tmpZip = path.join(tmpDir, info.zipFileName);
-  mkdirSync(tmpDir, { recursive: true });
+  await mkdir(tmpDir, { recursive: true });
 
   const fileStream = createWriteStream(tmpZip);
 
@@ -286,14 +177,14 @@ export async function downloadUpdate(
   report("extracting", "正在安装更新...", -1);
 
   const targetDir = getFrontendDir();
-  rmSync(targetDir, { recursive: true, force: true });
-  mkdirSync(targetDir, { recursive: true });
+  await rm(targetDir, { recursive: true, force: true });
+  await mkdir(targetDir, { recursive: true });
 
   try {
     await extract(tmpZip, { dir: targetDir });
   } finally {
     // Always clean up the temp zip, even if extraction failed
-    rmSync(tmpDir, { recursive: true, force: true });
+    await rm(tmpDir, { recursive: true, force: true });
   }
 
   console.log(`${TAG} Updated to ${info.version}`);

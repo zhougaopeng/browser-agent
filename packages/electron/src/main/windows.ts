@@ -1,6 +1,5 @@
 import path from "node:path";
 import { app, BrowserWindow } from "electron";
-import { loadSplash } from "./frontend-loader";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -20,8 +19,6 @@ export function createMainWindow(): BrowserWindow {
       webSecurity: app.isPackaged,
     },
   });
-
-  loadSplash(mainWindow);
 
   mainWindow.on("closed", () => {
     mainWindow = null;

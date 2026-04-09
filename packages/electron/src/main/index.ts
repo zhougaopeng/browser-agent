@@ -1,23 +1,54 @@
 import path from "node:path";
-import { type ChatStreamHandlerParams, createApp, createChatResponse } from "@browser-agent/server";
+import {
+  type ChatStreamHandlerParams,
+  cancelChat,
+  createApp,
+  createChatResponse,
+} from "@browser-agent/server";
+import { WEB_DEV_URL } from "@browser-agent/shared";
 import { app, net, protocol } from "electron";
-import { checkForUpdate, downloadUpdate, getActiveFrontend, loadFrontend } from "./frontend-loader";
+import { checkForUpdate, downloadUpdate, loadSplash } from "./frontend-loader";
 import { setupSettingsIPC } from "./ipc/settings";
 import { setupThreadsIPC } from "./ipc/threads";
+import { getTargetFrontendVersion } from "./util";
 import { createMainWindow } from "./windows";
 
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: "agent",
-    privileges: { standard: true, supportFetchAPI: true, stream: true },
-  },
-  {
-    scheme: "browser",
-    privileges: { standard: true, supportFetchAPI: true },
-  },
-]);
+if (!process.env.WEB_DEV) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: "agent",
+      privileges: { standard: true, supportFetchAPI: true, stream: true },
+    },
+    {
+      scheme: "browser",
+      privileges: { standard: true, supportFetchAPI: true },
+    },
+  ]);
+}
 
 app.whenReady().then(async () => {
+  const mainWindow = createMainWindow();
+
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
+
+  if (process.env.WEB_DEV) {
+    mainWindow.loadURL(WEB_DEV_URL);
+    return;
+  }
+
+  // 使用 let，方便在下载完成后更新引用，让 protocol handler 始终读到最新版本
+  let targetFrontendVersion = getTargetFrontendVersion();
+
+  // 只有在没有可用的本地前端版本时才显示 splash（说明需要等待下载，有 IO 等待）
+  // 如果已有内置包或用户目录包，直接跳过 splash 避免闪屏
+  if (!targetFrontendVersion) {
+    loadSplash(mainWindow);
+  }
+
+  // 获取路径
+
   protocol.handle("browser", (request) => {
     const url = new URL(request.url);
     let pathname = decodeURIComponent(url.pathname);
@@ -26,7 +57,7 @@ app.whenReady().then(async () => {
       pathname = "/index.html";
     }
 
-    const frontendDir = getActiveFrontend()?.dir ?? null;
+    const frontendDir = targetFrontendVersion?.frontendDir;
     if (!frontendDir) {
       return new Response("Frontend not found", { status: 404 });
     }
@@ -45,6 +76,7 @@ app.whenReady().then(async () => {
     "Access-Control-Allow-Origin": "browser://.",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Expose-Headers": "X-Thread-Id",
   };
 
   const withCors = (response: Response): Response => {
@@ -73,6 +105,16 @@ app.whenReady().then(async () => {
       const url = new URL(request.url);
 
       if (url.hostname === "chat" && request.method === "POST") {
+        if (url.pathname === "/cancel") {
+          const { threadId } = (await request.json()) as { threadId: string };
+          const cancelled = threadId ? cancelChat(threadId) : false;
+          return withCors(
+            new Response(JSON.stringify({ cancelled }), {
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
         const params = (await request.json()) as ChatStreamHandlerParams & { id?: string };
         const response = await createChatResponse(serverApp, params);
         return withCors(response);
@@ -90,7 +132,6 @@ app.whenReady().then(async () => {
     }
   });
 
-  const mainWindow = createMainWindow();
   setupSettingsIPC(mainWindow, appPromise);
   setupThreadsIPC(appPromise);
 
@@ -98,31 +139,59 @@ app.whenReady().then(async () => {
   // 1) Frontend: load best local version immediately → background update check
   // 2) Server:   createApp resolve → protocol handler registration
   const frontendReady = (async () => {
-    // Step 1: Load the best available local version right away (no network wait)
-    loadFrontend(mainWindow);
+    const isLocalPackage = !!process.env.ELECTRON_LOCAL_PACKAGE;
+    let justDownloaded = false;
 
-    if (!app.isPackaged) {
-      mainWindow.webContents.openDevTools({ mode: "detach" });
+    // Step 1: 若无本地版本（首次安装），必须阻塞下载后才能加载，否则 browser:// 会 404
+    if (!targetFrontendVersion) {
+      if (isLocalPackage) {
+        console.error("[index] ELECTRON_LOCAL_PACKAGE set but no bundled frontend found.");
+        return;
+      }
+
+      console.log("[index] No local frontend found, downloading initial version...");
+
+      // 通知 splash 页面当前正在检查更新
+      mainWindow.webContents.send("splash:status", {
+        stage: "checking",
+        message: "正在检查更新...",
+        progress: -1,
+      });
+
+      const update = await checkForUpdate(null).catch((err) => {
+        console.error("[index] Initial download check failed:", err);
+        return null;
+      });
+
+      if (update) {
+        await downloadUpdate(update, (status) => {
+          // 将下载/解压进度实时推送给 splash 页面
+          mainWindow.webContents.send("splash:status", status);
+        }).catch((err) => {
+          console.error("[index] Initial download failed:", err);
+        });
+        // 下载完成后更新引用，让 protocol handler 能正确解析文件路径
+        targetFrontendVersion = getTargetFrontendVersion();
+        justDownloaded = true;
+      }
     }
 
-    // Step 2: Check for remote updates in the background
-    const devUrl = process.env.FRONTEND_DEV_URL || process.env.ELECTRON_RENDERER_URL;
-    if (!devUrl) {
-      // Fire-and-forget: do not await so app startup is not blocked
-      checkForUpdate()
+    // Step 2: 加载本地前端（此时应已有可用版本）
+    mainWindow.loadURL("browser://frontend/");
+
+    // Step 3: 后台检查更新（刚下载的本就是最新版，无需再查）
+    if (!isLocalPackage && !justDownloaded) {
+      checkForUpdate(targetFrontendVersion)
         .then(async (update) => {
           if (!update) return;
 
           console.log(`[index] Downloading frontend update ${update.version}...`);
           await downloadUpdate(update);
 
-          // Notify the frontend that a new version is ready — let the user
-          // decide when to restart rather than force-reloading.
           mainWindow.webContents.send("frontend:update-ready", { version: update.version });
           console.log(`[index] Frontend update ready: ${update.version}`);
         })
         .catch((err) => {
-          // Background update errors are non-fatal; log and move on.
           console.error("[index] Background update failed:", err);
         });
     }

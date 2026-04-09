@@ -35,6 +35,7 @@ export interface MessageListResult {
 
 export interface ApiAdapter {
   chatTransport: ChatTransport<UIMessage>;
+  cancelChat(threadId: string): Promise<void>;
   settings: {
     get(): Promise<AppSettings>;
     set(key: string, value: unknown): Promise<void>;
@@ -58,4 +59,9 @@ export interface ApiAdapter {
 
 export const isElectron = typeof window !== "undefined" && "electronAPI" in window;
 
-export const api: ApiAdapter = isElectron ? createElectronAdapter() : createHttpAdapter();
+// WEB_DEV 模式下页面从 http://localhost 加载（非 browser:// 自定义协议），
+// 此时 agent:// 自定义协议存在跨域问题，降级为 HTTP adapter 走本地 server。
+const useElectronAdapter =
+  isElectron && typeof window !== "undefined" && window.location.protocol !== "http:";
+
+export const api: ApiAdapter = useElectronAdapter ? createElectronAdapter() : createHttpAdapter();

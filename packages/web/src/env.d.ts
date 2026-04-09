@@ -1,6 +1,14 @@
 export type { AppSettings } from "@browser-agent/shared";
 
 interface ElectronAPI {
+  splash: {
+    onStatus(
+      cb: (status: { stage: string; message: string; progress: number }) => void,
+    ): () => void;
+  };
+  updates: {
+    onReady(cb: (info: { version: string }) => void): () => void;
+  };
   settings: {
     get(): Promise<import("@browser-agent/shared").AppSettings>;
     set(key: string, value: unknown): Promise<void>;

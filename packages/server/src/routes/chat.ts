@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ChatStreamHandlerParams } from "@mastra/ai-sdk";
 import { createUIMessageStreamResponse } from "ai";
-import { createChatStream } from "../api";
+import { cancelChat, createChatStream } from "../api";
 import type { AppInstance } from "../index";
 
 export async function handleChatRoute(
@@ -18,6 +18,12 @@ export async function handleChatRoute(
     const body = await readBody(req);
     const params = JSON.parse(body) as ChatStreamHandlerParams & { id?: string };
     const { stream, threadId } = await createChatStream(app, params);
+
+    req.on("close", () => {
+      if (!res.writableFinished) {
+        cancelChat(threadId);
+      }
+    });
 
     const streamResponse = createUIMessageStreamResponse({ stream });
 
@@ -44,6 +50,39 @@ export async function handleChatRoute(
     }
   } catch (err) {
     console.error("[chat] Route error:", err);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }));
+    } else {
+      res.end();
+    }
+  }
+}
+
+export async function handleChatCancelRoute(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  if (req.method !== "POST") {
+    res.writeHead(405).end("Method Not Allowed");
+    return;
+  }
+
+  try {
+    const body = await readBody(req);
+    const { threadId } = JSON.parse(body) as { threadId: string };
+
+    if (!threadId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "threadId is required" }));
+      return;
+    }
+
+    const cancelled = cancelChat(threadId);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ cancelled }));
+  } catch (err) {
+    console.error("[chat/cancel] Route error:", err);
     if (!res.headersSent) {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }));

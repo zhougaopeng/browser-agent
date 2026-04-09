@@ -9,6 +9,14 @@ const api = {
       };
     },
   },
+  updates: {
+    onReady: (cb: (info: { version: string }) => void) => {
+      ipcRenderer.on("frontend:update-ready", (_e, info) => cb(info));
+      return () => {
+        ipcRenderer.removeAllListeners("frontend:update-ready");
+      };
+    },
+  },
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     set: (key: string, value: unknown) => ipcRenderer.invoke("settings:set", key, value),

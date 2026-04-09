@@ -97,6 +97,7 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
 export {
   type ChatStreamHandlerParams,
   type CreateChatStreamResult,
+  cancelChat,
   createChatResponse,
   createChatStream,
   createThread,

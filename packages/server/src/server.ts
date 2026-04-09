@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { SERVER_PORT } from "@browser-agent/shared";
 import { createApp } from "./index";
-import { handleChatRoute } from "./routes/chat";
+import { handleChatCancelRoute, handleChatRoute } from "./routes/chat";
 import { handleSettingsRoute } from "./routes/settings";
 import { handleThreadsRoute } from "./routes/threads";
 
@@ -16,6 +16,7 @@ async function main() {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Expose-Headers", "X-Thread-Id");
 
     if (req.method === "OPTIONS") {
       res.writeHead(204).end();
@@ -25,7 +26,12 @@ async function main() {
     try {
       const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
+      if (url.pathname === "/health") {
+        res.writeHead(200).end("ok");
+        return;
+      }
       if (url.pathname === "/api/chat") return await handleChatRoute(req, res, app);
+      if (url.pathname === "/api/chat/cancel") return await handleChatCancelRoute(req, res);
       if (url.pathname.startsWith("/api/settings")) return await handleSettingsRoute(req, res, app);
       if (url.pathname.startsWith("/api/threads")) return await handleThreadsRoute(req, res, app);
 

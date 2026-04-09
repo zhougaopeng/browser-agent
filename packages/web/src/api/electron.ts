@@ -1,17 +1,16 @@
-import { DefaultChatTransport } from "ai";
-import { threadIdMap } from "../lib/thread-adapter";
+import { ELECTRON_CHAT_URL } from "@browser-agent/shared";
 import type { ApiAdapter } from "./adapter";
+import { BrowserAgentTransport } from "./transport";
 
 export function createElectronAdapter(): ApiAdapter {
   return {
-    chatTransport: new DefaultChatTransport({
-      api: "agent://chat",
-      prepareSendMessagesRequest({ id, messages, body, trigger, messageId }) {
-        return {
-          body: { ...body, id: threadIdMap.get(id) ?? id, messages, trigger, messageId },
-        };
-      },
-    }),
+    chatTransport: new BrowserAgentTransport({ api: ELECTRON_CHAT_URL }),
+    cancelChat: (threadId) =>
+      fetch(`${ELECTRON_CHAT_URL}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId }),
+      }).then(() => {}),
     settings: window.electronAPI.settings,
     threads: window.electronAPI.threads,
   };

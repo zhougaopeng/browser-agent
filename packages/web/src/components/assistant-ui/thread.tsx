@@ -19,10 +19,12 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useCallback, useState } from "react";
+import { api } from "@/api/adapter";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { threadIdMap } from "@/lib/thread-adapter";
 import { cn } from "@/lib/utils";
 
 export const Thread: FC = () => {
@@ -37,15 +39,10 @@ export const Thread: FC = () => {
     >
       <ThreadPrimitive.Viewport
         turnAnchor="top"
+        autoScroll
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-8"
       >
-        <div className="flex flex-col flex-1">
-          <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
-
-          <AuiIf condition={(s) => s.thread.isRunning}>
-            <AssistantLoading />
-          </AuiIf>
-        </div>
+        <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
 
         <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-6 md:pb-8">
           <ThreadScrollToBottom />
@@ -58,22 +55,17 @@ export const Thread: FC = () => {
 
 const AssistantLoading: FC = () => {
   return (
-    <div
-      className="mx-auto w-full max-w-(--thread-max-width) px-3 py-4"
-      data-role="assistant-loading"
-    >
-      <div className="flex items-center gap-1.5 px-3">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="inline-block size-1.5 rounded-full bg-muted-foreground/40"
-            style={{
-              animation: "aui-pulse 1.4s ease-in-out infinite",
-              animationDelay: `${i * 0.2}s`,
-            }}
-          />
-        ))}
-      </div>
+    <div className="flex items-center gap-1.5 px-3 pt-6" data-role="assistant-loading">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="inline-block size-1.5 rounded-full bg-muted-foreground/40"
+          style={{
+            animation: "aui-pulse 1.4s ease-in-out infinite",
+            animationDelay: `${i * 0.2}s`,
+          }}
+        />
+      ))}
       <style>{`
         @keyframes aui-pulse {
           0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -125,6 +117,15 @@ const Composer: FC = () => {
 };
 
 const ComposerAction: FC = () => {
+  const localId = useAuiState((s) => s.threadListItem.id);
+
+  const handleStop = useCallback(() => {
+    const serverId = threadIdMap.get(localId) ?? localId;
+    if (serverId && !serverId.startsWith("__LOCALID_")) {
+      api.cancelChat(serverId).catch(() => {});
+    }
+  }, [localId]);
+
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-end">
       <AuiIf condition={(s) => !s.thread.isRunning}>
@@ -146,6 +147,7 @@ const ComposerAction: FC = () => {
         <ComposerPrimitive.Cancel asChild>
           <button
             type="button"
+            onClick={handleStop}
             className="aui-composer-cancel inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
             aria-label="Stop generating"
           >
@@ -168,6 +170,9 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const isLast = useAuiState((s) => s.message.isLast);
+  const isRunning = useAuiState((s) => s.thread.isRunning);
+
   return (
     <MessagePrimitive.Root
       className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-4 duration-150"
@@ -185,7 +190,9 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-2 ml-3 flex min-h-6 items-center">
+      {isLast && isRunning && <AssistantLoading />}
+
+      <div className="aui-assistant-message-footer mt-2 ml-3 flex items-center">
         <BranchPicker />
         <AssistantActionBar />
       </div>

@@ -1,21 +1,19 @@
 import { SERVER_BASE_URL } from "@browser-agent/shared";
-import { DefaultChatTransport } from "ai";
 import type { AppSettings } from "../env";
-import { threadIdMap } from "../lib/thread-adapter";
 import type { ApiAdapter } from "./adapter";
+import { BrowserAgentTransport } from "./transport";
 
 const BASE = SERVER_BASE_URL;
 
 export function createHttpAdapter(): ApiAdapter {
   return {
-    chatTransport: new DefaultChatTransport({
-      api: `${BASE}/chat`,
-      prepareSendMessagesRequest({ id, messages, body, trigger, messageId }) {
-        return {
-          body: { ...body, id: threadIdMap.get(id) ?? id, messages, trigger, messageId },
-        };
-      },
-    }),
+    chatTransport: new BrowserAgentTransport({ api: `${BASE}/chat` }),
+    cancelChat: (threadId) =>
+      fetch(`${BASE}/chat/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId }),
+      }).then(() => {}),
     settings: {
       get: () => fetch(`${BASE}/settings`).then((r) => r.json()) as Promise<AppSettings>,
       set: (key, value) =>

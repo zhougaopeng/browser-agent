@@ -36,7 +36,7 @@ export function ChatRoute() {
 
     const timeout = setTimeout(() => {
       clearInterval(timer);
-      navigate("/", { replace: true });
+      navigate("/chat", { replace: true });
     }, 3000);
 
     return () => {

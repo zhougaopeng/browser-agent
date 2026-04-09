@@ -1,12 +1,8 @@
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { ArrowUpIcon, GlobeIcon, MousePointerClickIcon, SearchIcon } from "lucide-react";
-import { type FC, type FormEvent, useCallback, useRef, useState } from "react";
+import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { preGenerateThreadId } from "@/lib/thread-adapter";
-
-interface WelcomePageProps {
-  onStartChat?: (remoteId: string) => void;
-}
 
 const SUGGESTIONS = [
   { icon: GlobeIcon, text: "打开百度搜索并查询天气" },
@@ -14,8 +10,16 @@ const SUGGESTIONS = [
   { icon: MousePointerClickIcon, text: "打开 GitHub 并登录我的账号" },
 ];
 
-export const WelcomePage: FC<WelcomePageProps> = ({ onStartChat }) => {
+export const WelcomePage: FC = () => {
   const aui = useAui();
+  const threadStatus = useAuiState((s) => s.threadListItem.status) as string;
+  const sendingRef = useRef(false);
+
+  useEffect(() => {
+    if (threadStatus !== "new" && !sendingRef.current) {
+      aui.threads().switchToNewThread();
+    }
+  }, [aui, threadStatus]);
 
   const handleSuggestionClick = useCallback(
     (text: string) => {
@@ -48,7 +52,7 @@ export const WelcomePage: FC<WelcomePageProps> = ({ onStartChat }) => {
           ))}
         </div>
 
-        <WelcomeComposer onSend={onStartChat} />
+        <WelcomeComposer sendingRef={sendingRef} />
       </div>
     </div>
   );
@@ -76,28 +80,35 @@ const SuggestionCard: FC<{
   );
 };
 
-const WelcomeComposer: FC<{ onSend?: (remoteId: string) => void }> = ({ onSend }) => {
+const WelcomeComposer: FC<{
+  sendingRef: React.RefObject<boolean>;
+}> = ({ sendingRef }) => {
   const aui = useAui();
+  const navigate = useNavigate();
   const canSend = useAuiState((s) => !s.composer.isEmpty && !s.thread.isRunning);
+  const threadStatus = useAuiState((s) => s.threadListItem.status) as string;
+  const remoteId = useAuiState((s) => s.threadListItem.remoteId) as string | undefined;
   const [isSending, setIsSending] = useState(false);
   const lockRef = useRef(false);
+  const prevRemoteIdRef = useRef<string | undefined>(undefined);
 
-  const handleSend = useCallback(async () => {
-    if (!canSend || lockRef.current) return;
+  useEffect(() => {
+    if (!isSending || !remoteId || remoteId.startsWith("__LOCALID_")) return;
+    if (remoteId === prevRemoteIdRef.current) return;
+    navigate(`/chat/${remoteId}`, { replace: true });
+  }, [isSending, remoteId, navigate]);
+
+  const handleSend = useCallback(() => {
+    if (!canSend || lockRef.current || threadStatus !== "new") return;
     lockRef.current = true;
+    sendingRef.current = true;
+    prevRemoteIdRef.current = remoteId;
     setIsSending(true);
-    try {
-      const remoteId = preGenerateThreadId();
-      aui.composer().send();
-      onSend?.(remoteId);
-    } catch {
-      lockRef.current = false;
-      setIsSending(false);
-    }
-  }, [aui, canSend, onSend]);
+    aui.composer().send();
+  }, [aui, canSend, threadStatus, remoteId, sendingRef]);
 
   const handleSubmit = useCallback(
-    (e: FormEvent) => {
+    (e: React.SyntheticEvent) => {
       e.preventDefault();
       handleSend();
     },
