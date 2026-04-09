@@ -19,12 +19,12 @@ mac:
   target:
     - dmg
     - zip
-  artifactName: "${name}-${version}-${arch}.${ext}"
+  artifactName: "browser-agent-${version}-${arch}.${ext}"
 win:
   target:
     - nsis
-  artifactName: "${name}-${version}-${arch}.${ext}"
+  artifactName: "browser-agent-${version}-${arch}.${ext}"
 linux:
   target:
     - AppImage
-  artifactName: "${name}-${version}-${arch}.${ext}"
+  artifactName: "browser-agent-${version}-${arch}.${ext}"

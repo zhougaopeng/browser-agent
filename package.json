@@ -11,10 +11,11 @@
     "dev:server": "npm run dev -w @browser-agent/server",
     "dev:web": "npm run dev -w @browser-agent/web",
 
-    "build:server": "npm run build -w @browser-agent/server",
-    "build:server:embed": "npm run build:electron -w @browser-agent/server",
-    "build:web": "npm run build -w @browser-agent/web",
-    "build:web:zip": "npm run build:zip -w @browser-agent/web",
+    "build:shared": "npm run build -w @browser-agent/shared",
+    "build:server": "npm run build:shared && npm run build -w @browser-agent/server",
+    "build:server:embed": "npm run build:shared && npm run build:electron -w @browser-agent/server",
+    "build:web": "npm run build:shared && npm run build -w @browser-agent/web",
+    "build:web:zip": "npm run build:shared && npm run build:zip -w @browser-agent/web",
     "build:electron": "npm run build -w @browser-agent/electron",
 
     "package": "npm run build:server:embed && npm run build:web:zip && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist && CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -w @browser-agent/electron",
