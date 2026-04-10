@@ -88,6 +88,20 @@ jobs:
           # Set FRONTEND_BUNDLE_URL in repo Settings → Secrets and variables → Actions.
           FRONTEND_BUNDLE_URL: ${{ secrets.FRONTEND_BUNDLE_URL }}
 
+      # ── 5. 创建 Release 并上传产物 ──────────────────────────────
+      - name: Ensure GitHub Release exists
+        if: steps.flags.outputs.web == 'true' || steps.flags.outputs.electron == 'true'
+        run: |
+          TAG="${{ steps.flags.outputs.tag }}"
+          if ! gh release view "$TAG" &>/dev/null; then
+            echo "Creating release $TAG..."
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          else
+            echo "Release $TAG already exists."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package & publish macOS app to GitHub Release
         if: steps.flags.outputs.electron == 'true'
         run: npm run package -w @browser-agent/electron -- --publish always
@@ -103,20 +117,6 @@ jobs:
           # APPLE_ID: ${{ secrets.APPLE_ID }}
           # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      # ── 5. 上传 web 产物到 GitHub Release ─────────────────────
-      - name: Ensure GitHub Release exists
-        if: steps.flags.outputs.web == 'true' || steps.flags.outputs.electron == 'true'
-        run: |
-          TAG="${{ steps.flags.outputs.tag }}"
-          if ! gh release view "$TAG" &>/dev/null; then
-            echo "Creating release $TAG..."
-            gh release create "$TAG" --title "$TAG" --generate-notes
-          else
-            echo "Release $TAG already exists."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload web zip to GitHub Release
         if: steps.flags.outputs.web == 'true'
