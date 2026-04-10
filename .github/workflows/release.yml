@@ -61,6 +61,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared package
+        run: npm run build -w @browser-agent/shared
+
       # ── 3. Web 构建 ────────────────────────────────────────────
       # build_web=true  → 构建并发布 web.zip + version.json
       # build_electron=true (build_web=false) → 也需要构建 web dist 供 electron 使用，但不发布
