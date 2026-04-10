@@ -1,6 +1,6 @@
 import { useAuiState } from "@assistant-ui/react";
-import { SettingsIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { SettingsIcon } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { ChatRoute } from "@/components/chat/ChatRoute";
@@ -25,11 +25,9 @@ export function App() {
 function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-
   useEffect(() => {
-    return window.electronAPI?.updates?.onReady(({ version }) => {
-      setUpdateVersion(version);
+    return window.electronAPI?.updates?.onReady(() => {
+      window.location.reload();
     });
   }, []);
 
@@ -54,22 +52,6 @@ function AppLayout() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* 新版本更新提示 banner */}
-      {updateVersion && (
-        <div className="flex items-center justify-between gap-2 bg-indigo-600 px-4 py-2 text-sm text-white">
-          <span>
-            新版本 <strong>v{updateVersion}</strong> 已就绪，重启后生效。
-          </span>
-          <button
-            type="button"
-            onClick={() => setUpdateVersion(null)}
-            className="shrink-0 rounded p-0.5 opacity-80 hover:opacity-100"
-            aria-label="关闭提示"
-          >
-            <XIcon className="size-4" />
-          </button>
-        </div>
-      )}
       {/* Electron only: full-width drag region (replaces system title bar) */}
       {isElectron && (
         <div className="drag-region flex h-11 shrink-0">

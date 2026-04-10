@@ -19,6 +19,7 @@ export type ToolFallbackRootProps = Omit<
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
+  status?: ToolCallMessagePartStatus;
 };
 
 function ToolFallbackRoot({
@@ -26,6 +27,7 @@ function ToolFallbackRoot({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
+  status,
   children,
   ...props
 }: ToolFallbackRootProps) {
@@ -49,6 +51,11 @@ function ToolFallbackRoot({
     [lockScroll, isControlled, controlledOnOpenChange],
   );
 
+  const statusType = status?.type ?? "complete";
+  const isRunning = statusType === "running";
+  const isCancelled = status?.type === "incomplete" && status.reason === "cancelled";
+  const isError = status?.type === "incomplete" && status.reason !== "cancelled";
+
   return (
     <Collapsible
       ref={collapsibleRef}
@@ -56,7 +63,13 @@ function ToolFallbackRoot({
       open={isOpen}
       onOpenChange={handleOpenChange}
       className={cn(
-        "aui-tool-fallback-root group/tool-fallback-root my-2 w-full rounded-xl border border-border/60 bg-muted/20 py-2.5",
+        "aui-tool-fallback-root group/tool-fallback-root my-2 w-full overflow-hidden rounded-xl border",
+        "transition-all duration-200",
+        /* status-specific border / bg */
+        isRunning && "border-primary/20 bg-primary/[0.03]",
+        !isRunning && !isCancelled && !isError && "border-emerald-500/20 bg-emerald-500/[0.03]",
+        isCancelled && "border-muted-foreground/20 bg-muted/20",
+        isError && "border-destructive/25 bg-destructive/[0.03]",
         className,
       )}
       style={
@@ -66,7 +79,19 @@ function ToolFallbackRoot({
       }
       {...props}
     >
-      {children}
+      {/* 左侧状态指示条 */}
+      <div className="relative flex">
+        <div
+          className={cn(
+            "aui-tool-fallback-accent-bar absolute left-0 top-0 bottom-0 w-[3px] rounded-full",
+            isRunning && "bg-primary/50",
+            !isRunning && !isCancelled && !isError && "bg-emerald-500/60",
+            isCancelled && "bg-muted-foreground/30",
+            isError && "bg-destructive/50",
+          )}
+        />
+        <div className="min-w-0 flex-1 pl-[3px]">{children}</div>
+      </div>
     </Collapsible>
   );
 }
@@ -92,52 +117,108 @@ function ToolFallbackTrigger({
   const statusType = status?.type ?? "complete";
   const isRunning = statusType === "running";
   const isCancelled = status?.type === "incomplete" && status.reason === "cancelled";
+  const isError = status?.type === "incomplete" && status.reason !== "cancelled";
 
   const Icon = statusIconMap[statusType];
-  const label = isCancelled ? "Cancelled tool" : "Used tool";
+
+  /* 工具名做一点格式化：camelCase / snake_case → 空格分词 */
+  const displayName = toolName.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
 
   return (
     <CollapsibleTrigger
       data-slot="tool-fallback-trigger"
       className={cn(
-        "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2.5 px-4 text-sm text-muted-foreground/80 transition-colors hover:text-foreground",
+        "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2.5 px-3.5 py-2.5",
+        "text-sm transition-colors",
+        "hover:bg-black/[0.02] dark:hover:bg-white/[0.03]",
         className,
       )}
       {...props}
     >
-      <Icon
-        data-slot="tool-fallback-trigger-icon"
+      {/* 状态图标 */}
+      <span
         className={cn(
-          "aui-tool-fallback-trigger-icon size-3.5 shrink-0",
-          isCancelled && "text-muted-foreground/50",
-          isRunning && "animate-spin text-primary/60",
-          !isRunning && !isCancelled && "text-emerald-600/70",
+          "flex size-5 shrink-0 items-center justify-center rounded-full",
+          isRunning && "bg-primary/10",
+          !isRunning && !isCancelled && !isError && "bg-emerald-500/12",
+          isCancelled && "bg-muted-foreground/10",
+          isError && "bg-destructive/10",
         )}
-      />
+      >
+        <Icon
+          data-slot="tool-fallback-trigger-icon"
+          className={cn(
+            "aui-tool-fallback-trigger-icon size-3 shrink-0",
+            isRunning && "animate-spin text-primary/70",
+            !isRunning && !isCancelled && !isError && "text-emerald-600",
+            isCancelled && "text-muted-foreground/50",
+            isError && "text-destructive",
+          )}
+        />
+      </span>
+
+      {/* 文字区 */}
       <span
         data-slot="tool-fallback-trigger-label"
         className={cn(
           "aui-tool-fallback-trigger-label-wrapper relative inline-block grow text-left leading-none",
-          isCancelled && "text-muted-foreground line-through",
         )}
       >
-        <span>
-          {label}: <span className="font-medium">{toolName}</span>
+        <span
+          className={cn(
+            "text-muted-foreground/70 transition-colors group-hover/trigger:text-muted-foreground",
+            isCancelled && "line-through opacity-60",
+          )}
+        >
+          {isRunning ? (
+            <>
+              <span>调用工具 </span>
+              <span className="font-semibold text-foreground/80">{displayName}</span>
+              <span> 中</span>
+              {/* running shimmer */}
+              <span
+                aria-hidden
+                data-slot="tool-fallback-trigger-shimmer"
+                className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
+              >
+                调用工具 <span className="font-semibold text-foreground/80">{displayName}</span> 中
+              </span>
+            </>
+          ) : isCancelled ? (
+            <>
+              <span>已取消 </span>
+              <span className="font-semibold text-foreground/60">{displayName}</span>
+            </>
+          ) : isError ? (
+            <>
+              <span>工具调用失败 </span>
+              <span className="font-semibold text-foreground/80">{displayName}</span>
+            </>
+          ) : (
+            <>
+              <span>已调用 </span>
+              <span className="font-semibold text-foreground/85">{displayName}</span>
+            </>
+          )}
         </span>
-        {isRunning && (
-          <span
-            aria-hidden
-            data-slot="tool-fallback-trigger-shimmer"
-            className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
-          >
-            {label}: <span className="font-medium">{toolName}</span>
-          </span>
-        )}
       </span>
+
+      {/* 工具名 badge */}
+      <span
+        className={cn(
+          "shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] leading-none",
+          "border border-border/50 bg-muted/60 text-muted-foreground/60",
+          "hidden sm:inline-block",
+          isCancelled && "opacity-40",
+        )}
+      >
+        {toolName}
+      </span>
+
       <ChevronDownIcon
         data-slot="tool-fallback-trigger-chevron"
         className={cn(
-          "aui-tool-fallback-trigger-chevron size-4 shrink-0",
+          "aui-tool-fallback-trigger-chevron ml-0.5 size-3.5 shrink-0 text-muted-foreground/40",
           "transition-transform duration-(--animation-duration) ease-out",
           "group-data-[state=closed]/trigger:-rotate-90",
           "group-data-[state=open]/trigger:rotate-0",
@@ -168,7 +249,9 @@ function ToolFallbackContent({
       )}
       {...props}
     >
-      <div className="mt-3 flex flex-col gap-2 border-t pt-2">{children}</div>
+      <div className="mt-0 flex flex-col divide-y divide-border/40 border-t border-border/40">
+        {children}
+      </div>
     </CollapsibleContent>
   );
 }
@@ -182,13 +265,28 @@ function ToolFallbackArgs({
 }) {
   if (!argsText) return null;
 
+  // 尝试格式化 JSON
+  let formatted = argsText;
+  try {
+    formatted = JSON.stringify(JSON.parse(argsText), null, 2);
+  } catch {
+    // 不是 JSON，保持原样
+  }
+
   return (
     <div
       data-slot="tool-fallback-args"
-      className={cn("aui-tool-fallback-args px-4", className)}
+      className={cn("aui-tool-fallback-args group/args", className)}
       {...props}
     >
-      <pre className="aui-tool-fallback-args-value whitespace-pre-wrap">{argsText}</pre>
+      <div className="flex items-center gap-1.5 px-3.5 py-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+          Input
+        </span>
+      </div>
+      <pre className="aui-tool-fallback-args-value overflow-x-auto whitespace-pre-wrap break-all px-3.5 pb-3 pt-0 font-mono text-[0.78rem] leading-relaxed text-foreground/75">
+        {formatted}
+      </pre>
     </div>
   );
 }
@@ -202,15 +300,21 @@ function ToolFallbackResult({
 }) {
   if (result === undefined) return null;
 
+  const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+
   return (
     <div
       data-slot="tool-fallback-result"
-      className={cn("aui-tool-fallback-result border-t border-dashed px-4 pt-2", className)}
+      className={cn("aui-tool-fallback-result", className)}
       {...props}
     >
-      <p className="aui-tool-fallback-result-header font-semibold">Result:</p>
-      <pre className="aui-tool-fallback-result-content whitespace-pre-wrap">
-        {typeof result === "string" ? result : JSON.stringify(result, null, 2)}
+      <div className="flex items-center gap-1.5 px-3.5 py-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600/60">
+          Output
+        </span>
+      </div>
+      <pre className="aui-tool-fallback-result-content overflow-x-auto whitespace-pre-wrap break-all px-3.5 pb-3 pt-0 font-mono text-[0.78rem] leading-relaxed text-foreground/75">
+        {text}
       </pre>
     </div>
   );
@@ -231,18 +335,23 @@ function ToolFallbackError({
   if (!errorText) return null;
 
   const isCancelled = status.reason === "cancelled";
-  const headerText = isCancelled ? "Cancelled reason:" : "Error:";
 
   return (
     <div
       data-slot="tool-fallback-error"
-      className={cn("aui-tool-fallback-error px-4", className)}
+      className={cn(
+        "aui-tool-fallback-error px-3.5 py-2.5",
+        !isCancelled && "text-destructive/80",
+        className,
+      )}
       {...props}
     >
-      <p className="aui-tool-fallback-error-header font-semibold text-muted-foreground">
-        {headerText}
+      <p className="aui-tool-fallback-error-header mb-0.5 text-[10px] font-semibold uppercase tracking-wider opacity-60">
+        {isCancelled ? "Cancelled reason" : "Error"}
       </p>
-      <p className="aui-tool-fallback-error-reason text-muted-foreground">{errorText}</p>
+      <p className="aui-tool-fallback-error-reason font-mono text-[0.78rem] leading-relaxed">
+        {errorText}
+      </p>
     </div>
   );
 }
@@ -251,11 +360,11 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({ toolName, argsText, re
   const isCancelled = status?.type === "incomplete" && status.reason === "cancelled";
 
   return (
-    <ToolFallbackRoot className={cn(isCancelled && "border-muted-foreground/30 bg-muted/30")}>
+    <ToolFallbackRoot status={status}>
       <ToolFallbackTrigger toolName={toolName} status={status} />
       <ToolFallbackContent>
         <ToolFallbackError status={status} />
-        <ToolFallbackArgs argsText={argsText} className={cn(isCancelled && "opacity-60")} />
+        <ToolFallbackArgs argsText={argsText} className={cn(isCancelled && "opacity-50")} />
         {!isCancelled && <ToolFallbackResult result={result} />}
       </ToolFallbackContent>
     </ToolFallbackRoot>

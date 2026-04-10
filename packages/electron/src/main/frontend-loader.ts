@@ -1,7 +1,7 @@
 import { createWriteStream } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { app, type BrowserWindow } from "electron";
+import { app, type BrowserWindow, net } from "electron";
 import extract from "extract-zip";
 import { compareVersions, getFrontendDir, isSameHash, type VersionJson } from "./util";
 
@@ -64,15 +64,18 @@ export async function checkForUpdate(
     const versionUrl = `${baseUrl}/version.json?t=${Date.now()}`;
     console.log(`${TAG} Checking for updates: ${versionUrl}`);
 
+    // 使用 Node.js 内置 fetch（undici）而非 net.fetch（Chromium 网络栈），
+    // 避免在某些代理/启动时机场景下出现 ERR_FAILED 的问题
     const res = await fetch(versionUrl, {
       headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.log(`${TAG} Version check returned ${res.status}, skipping`);
       return null;
     }
 
-    const remote: VersionInfo = await res.json();
+    const remote: VersionInfo = (await res.json()) as VersionInfo;
 
     // Compare against the version that is actually loaded
     const activeVersion = targetFrontendVersion;
@@ -104,8 +107,12 @@ export async function checkForUpdate(
       zipUrl: `${baseUrl}/${remote.zipFileName}`,
       version: remote.version,
     };
-  } catch (err) {
-    console.error(`${TAG} Update check failed:`, err);
+  } catch (err: unknown) {
+    // HTTP 非 200 状态码也会走这里，不作为致命错误
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.startsWith("HTTP ")) {
+      console.error(`${TAG} Update check failed:`, err);
+    }
     return null;
   }
 }
@@ -128,7 +135,7 @@ export async function downloadUpdate(
 
   report("downloading", `正在下载更新...`, 0);
 
-  const zipRes = await fetch(info.zipUrl);
+  const zipRes = await net.fetch(info.zipUrl);
   if (!zipRes.ok || !zipRes.body) {
     throw new Error(`Download failed: ${zipRes.status}`);
   }
