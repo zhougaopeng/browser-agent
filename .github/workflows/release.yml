@@ -3,28 +3,56 @@ name: Release
 on:
   push:
     tags:
-      - "v*" # Triggered by tags like v1.0.0, v0.2.1
+      - "v*" # 推 tag → 全量发布（web + electron）
+
+  workflow_dispatch: # 手动触发 → 选择性发布
+    inputs:
+      tag:
+        description: "上传到哪个 Release（如 v1.0.0，Release 需已存在）"
+        required: true
+        type: string
+      build_web:
+        description: "发布 web.zip + version.json"
+        type: boolean
+        default: false
+      build_electron:
+        description: "发布 macOS 应用"
+        type: boolean
+        default: true
 
 permissions:
-  contents: write # Required to create GitHub Releases
+  contents: write
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            platform: mac
-          - os: windows-latest
-            platform: win
-          - os: ubuntu-latest
-            platform: linux
-
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      # ── 1. 计算本次实际需要构建的内容 ─────────────────────────
+      # tag push → 全量；workflow_dispatch → 按输入
+      - name: Compute build flags
+        id: flags
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "web=true"      >> $GITHUB_OUTPUT
+            echo "electron=true" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "web=${{ inputs.build_web }}"           >> $GITHUB_OUTPUT
+            echo "electron=${{ inputs.build_electron }}"  >> $GITHUB_OUTPUT
+            echo "tag=${{ inputs.tag }}"                  >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show build plan
+        run: |
+          echo "▶ trigger   : ${{ github.event_name }}"
+          echo "▶ tag       : ${{ steps.flags.outputs.tag }}"
+          echo "▶ build_web      : ${{ steps.flags.outputs.web }}"
+          echo "▶ build_electron : ${{ steps.flags.outputs.electron }}"
+
+      # ── 2. 公共步骤 ────────────────────────────────────────────
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,23 +61,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build server
-        run: npm run build:electron -w @browser-agent/server
-
+      # ── 3. Web 构建 ────────────────────────────────────────────
+      # build_web=true  → 构建并发布 web.zip + version.json
+      # build_electron=true (build_web=false) → 也需要构建 web dist 供 electron 使用，但不发布
       - name: Build web
+        if: steps.flags.outputs.web == 'true' || steps.flags.outputs.electron == 'true'
         run: npm run build:zip -w @browser-agent/web
 
+      # ── 4. Electron 构建 ───────────────────────────────────────
+      - name: Build server (embed into electron)
+        if: steps.flags.outputs.electron == 'true'
+        run: npm run build:electron -w @browser-agent/server
+
       - name: Copy frontend dist into electron package
+        if: steps.flags.outputs.electron == 'true'
         run: npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist
 
       - name: Build electron
+        if: steps.flags.outputs.electron == 'true'
         run: npm run build -w @browser-agent/electron
         env:
           # Baked into the main-process bundle at build time via electron.vite.config.ts define().
           # Set FRONTEND_BUNDLE_URL in repo Settings → Secrets and variables → Actions.
           FRONTEND_BUNDLE_URL: ${{ secrets.FRONTEND_BUNDLE_URL }}
 
-      - name: Package & publish to GitHub Release
+      - name: Package & publish macOS app to GitHub Release
+        if: steps.flags.outputs.electron == 'true'
         run: npm run package -w @browser-agent/electron -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,12 +101,17 @@ jobs:
           # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-      # Upload web zip to the same Release (only once, from the ubuntu runner)
+      # ── 5. 上传 web 产物到 GitHub Release ─────────────────────
       - name: Upload web zip to GitHub Release
-        if: matrix.platform == 'linux'
+        if: steps.flags.outputs.web == 'true'
         run: |
-          ZIP=$(ls packages/web/release/web-*.zip | head -1)
           VERSION_JSON=packages/web/release/version.json
-          gh release upload "${{ github.ref_name }}" "$ZIP" "$VERSION_JSON" --clobber
+          # version.json 里的 zipFileName 字段就是本次构建对应的 zip 文件名
+          ZIP_NAME=$(node -e "process.stdout.write(require('./$VERSION_JSON').zipFileName)")
+          ZIP=packages/web/release/$ZIP_NAME
+          # 校验：zip 文件必须存在，否则构建中途出错（version.json 已写但 zip 未完成）
+          test -f "$ZIP" || { echo "❌ zip not found: $ZIP"; exit 1; }
+          echo "Uploading $ZIP"
+          gh release upload "${{ steps.flags.outputs.tag }}" "$ZIP" "$VERSION_JSON" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

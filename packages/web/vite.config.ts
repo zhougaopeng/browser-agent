@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -44,6 +45,8 @@ function buildRelease(): Plugin {
 
       writeFileSync(path.join(distDir, "version.json"), JSON.stringify(versionInfo, null, 2));
 
+      // 每次构建前清理整个 release 目录，避免旧产物积累
+      rmSync(releaseDir, { recursive: true, force: true });
       mkdirSync(releaseDir, { recursive: true });
       writeFileSync(
         path.join(releaseDir, "version.json"),

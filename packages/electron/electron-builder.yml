@@ -21,11 +21,3 @@ mac:
     - dmg
     - zip
   artifactName: "browser-agent-${version}-${arch}.${ext}"
-win:
-  target:
-    - nsis
-  artifactName: "browser-agent-${version}-${arch}.${ext}"
-linux:
-  target:
-    - AppImage
-  artifactName: "browser-agent-${version}-${arch}.${ext}"
