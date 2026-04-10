@@ -19,8 +19,9 @@
     "fetch-frontend": "tsx ../../scripts/fetch-frontend.mts"
   },
   "dependencies": {
-    "@browser-agent/shared": "*",
     "@browser-agent/server": "*",
+    "@browser-agent/shared": "*",
+    "electron-updater": "^6.8.3",
     "extract-zip": "^2.0.1"
   },
   "devDependencies": {

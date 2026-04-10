@@ -7,7 +7,9 @@ import {
 } from "@browser-agent/server";
 import { WEB_DEV_URL } from "@browser-agent/shared";
 import { app, net, protocol } from "electron";
+import { initAppUpdater } from "./app-updater";
 import { checkForUpdate, downloadUpdate, loadSplash } from "./frontend-loader";
+import { setupAppUpdateIPC } from "./ipc/app-update";
 import { setupSettingsIPC } from "./ipc/settings";
 import { setupThreadsIPC } from "./ipc/threads";
 import { getTargetFrontendVersion } from "./util";
@@ -134,6 +136,8 @@ app.whenReady().then(async () => {
 
   setupSettingsIPC(mainWindow, appPromise);
   setupThreadsIPC(appPromise);
+  setupAppUpdateIPC();
+  initAppUpdater(mainWindow);
 
   // Two independent paths run in parallel:
   // 1) Frontend: load best local version immediately → background update check
@@ -205,7 +209,5 @@ app.on("before-quit", async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  app.quit();
 });

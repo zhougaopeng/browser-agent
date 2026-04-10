@@ -10,17 +10,14 @@
     "dev": "concurrently -n server,web,electron \"npm run dev -w @browser-agent/server\" \"npm run dev -w @browser-agent/web\" \"wait-on http://localhost:5173 http://localhost:3100/health && WEB_DEV=1 npm run dev -w @browser-agent/electron\"",
     "dev:server": "npm run dev -w @browser-agent/server",
     "dev:web": "npm run dev -w @browser-agent/web",
-
     "build:shared": "npm run build -w @browser-agent/shared",
     "build:server": "npm run build:shared && npm run build -w @browser-agent/server",
     "build:server:embed": "npm run build:shared && npm run build:electron -w @browser-agent/server",
     "build:web": "npm run build:shared && npm run build -w @browser-agent/web",
     "build:web:zip": "npm run build:shared && npm run build:zip -w @browser-agent/web",
     "build:electron": "npm run build -w @browser-agent/electron",
-
     "package": "npm run build:server:embed && npm run build:web:zip && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist && CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false npm run package -w @browser-agent/electron",
     "package:local": "npm run build:server:embed && npm run build:web:zip && npm run fetch-frontend -w @browser-agent/electron -- --local ../web/dist --output frontend-dist && CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_LOCAL_PACKAGE=1 npm run build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_LOCAL_PACKAGE=1 npm run package -w @browser-agent/electron",
-
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",
@@ -47,5 +44,8 @@
     "lint-staged": "^16.4.0",
     "vitest": "^4.1.2",
     "wait-on": "^8.0.3"
+  },
+  "dependencies": {
+    "lightningcss-darwin-arm64": "^1.32.0"
   }
 }
