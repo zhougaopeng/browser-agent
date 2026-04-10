@@ -102,6 +102,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sync version from tag to electron package.json
+        if: steps.flags.outputs.electron == 'true'
+        run: |
+          TAG="${{ steps.flags.outputs.tag }}"
+          VERSION="${TAG#v}"  # 去掉 v 前缀: v1.0.4 → 1.0.4
+          echo "Setting electron package version to $VERSION"
+          npm version "$VERSION" --no-git-tag-version -w @browser-agent/electron
+
       - name: Package & publish macOS app to GitHub Release
         if: steps.flags.outputs.electron == 'true'
         run: npm run package -w @browser-agent/electron -- --publish always
