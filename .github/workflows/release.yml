@@ -53,11 +53,23 @@ jobs:
         run: npm run package -w @browser-agent/electron -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing (optional, set in repo secrets if you have a cert)
+          # Uses ad-hoc signing (identity: "-" in electron-builder.yml).
+          # This prevents macOS Sequoia from trashing unsigned apps.
+          # Users will still need to right-click → Open on first launch.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false" # disable real cert auto-discovery; ad-hoc is handled by electron-builder config
+          # To enable proper Apple signing + notarization, uncomment and set these secrets:
           # CSC_LINK: ${{ secrets.CSC_LINK }}
           # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # Apple notarization (optional)
           # APPLE_ID: ${{ secrets.APPLE_ID }}
           # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false" # disable signing until certs are configured
+
+      # Upload web zip to the same Release (only once, from the ubuntu runner)
+      - name: Upload web zip to GitHub Release
+        if: matrix.platform == 'linux'
+        run: |
+          ZIP=$(ls packages/web/release/web-*.zip | head -1)
+          VERSION_JSON=packages/web/release/version.json
+          gh release upload "${{ github.ref_name }}" "$ZIP" "$VERSION_JSON" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
