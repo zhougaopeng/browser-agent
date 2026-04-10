@@ -72,6 +72,15 @@ jobs:
         run: npm run build:zip -w @browser-agent/web
 
       # ── 4. Electron 构建 ───────────────────────────────────────
+      - name: Sync version from tag to electron package.json
+        if: steps.flags.outputs.electron == 'true'
+        run: |
+          TAG="${{ steps.flags.outputs.tag }}"
+          VERSION="${TAG#v}"  # 去掉 v 前缀: v1.0.5 → 1.0.5
+          echo "Setting electron package version to $VERSION"
+          node -e "const f='packages/electron/package.json';const p=require('./'+f);p.version='$VERSION';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
+          cat packages/electron/package.json | head -5
+
       - name: Build server (embed into electron)
         if: steps.flags.outputs.electron == 'true'
         run: npm run build:electron -w @browser-agent/server
@@ -102,13 +111,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync version from tag to electron package.json
-        if: steps.flags.outputs.electron == 'true'
-        run: |
-          TAG="${{ steps.flags.outputs.tag }}"
-          VERSION="${TAG#v}"  # 去掉 v 前缀: v1.0.4 → 1.0.4
-          echo "Setting electron package version to $VERSION"
-          npm version "$VERSION" --no-git-tag-version -w @browser-agent/electron
 
       - name: Package & publish macOS app to GitHub Release
         if: steps.flags.outputs.electron == 'true'
