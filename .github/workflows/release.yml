@@ -28,7 +28,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # ── 1. 计算本次实际需要构建的内容 ─────────────────────────
       # tag push → 全量；workflow_dispatch → 按输入
@@ -53,7 +53,7 @@ jobs:
           echo "▶ build_electron : ${{ steps.flags.outputs.electron }}"
 
       # ── 2. 公共步骤 ────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: "npm"
