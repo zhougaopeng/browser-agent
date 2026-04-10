@@ -1,7 +1,6 @@
 import { createWriteStream } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { Writable } from "node:stream";
 import { app, type BrowserWindow } from "electron";
 import extract from "extract-zip";
 import { compareVersions, getFrontendDir, isSameHash, type VersionJson } from "./util";
@@ -62,12 +61,12 @@ export async function checkForUpdate(
   if (!baseUrl) return null;
 
   try {
-    const versionUrl = `${baseUrl}/version.json`;
+    const versionUrl = `${baseUrl}/version.json?t=${Date.now()}`;
     console.log(`${TAG} Checking for updates: ${versionUrl}`);
 
-    // Add a timestamp param to bust CDN/proxy caches, and set cache: 'no-store'
-    // to prevent Chromium's own network cache from returning a stale response.
-    const res = await fetch(`${versionUrl}?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(versionUrl, {
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    });
     if (!res.ok) {
       console.log(`${TAG} Version check returned ${res.status}, skipping`);
       return null;
@@ -143,33 +142,20 @@ export async function downloadUpdate(
 
   const fileStream = createWriteStream(tmpZip);
 
-  const writer = new Writable({
-    write(chunk: Buffer, _encoding, callback) {
-      downloadedBytes += chunk.length;
-      const progress = totalBytes > 0 ? downloadedBytes / totalBytes : -1;
-      const pct = progress >= 0 ? ` (${Math.round(progress * 100)}%)` : "";
-      report("downloading", `正在下载更新${pct}`, progress);
-      fileStream.write(chunk, callback);
-    },
-    final(callback) {
-      fileStream.end(callback);
-    },
-  });
-
-  const body = zipRes.body as ReadableStream<Uint8Array>;
-  await body.pipeTo(
-    new WritableStream({
-      write(chunk) {
-        return new Promise((resolve, reject) => {
-          writer.write(Buffer.from(chunk), (err) => (err ? reject(err) : resolve()));
-        });
-      },
-      close() {
-        return new Promise((resolve) => {
-          writer.end(resolve);
-        });
-      },
-    }),
+  const reader = zipRes.body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    downloadedBytes += value.length;
+    const progress = totalBytes > 0 ? downloadedBytes / totalBytes : -1;
+    const pct = progress >= 0 ? ` (${Math.round(progress * 100)}%)` : "";
+    report("downloading", `正在下载更新${pct}`, progress);
+    await new Promise<void>((resolve, reject) =>
+      fileStream.write(value, (err) => (err ? reject(err) : resolve())),
+    );
+  }
+  await new Promise<void>((resolve, reject) =>
+    fileStream.end((err: Error | null | undefined) => (err ? reject(err) : resolve())),
   );
 
   console.log(`${TAG} Downloaded ${info.zipFileName}`);

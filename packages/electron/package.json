@@ -1,12 +1,13 @@
 {
   "name": "@browser-agent/electron",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "main": "out/main/index.js",
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "prepackage": "rm -rf dist",
     "package": "electron-builder --config electron-builder.yml",
     "fetch-frontend": "tsx ../../scripts/fetch-frontend.mts"
   },

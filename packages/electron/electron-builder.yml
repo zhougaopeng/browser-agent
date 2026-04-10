@@ -19,5 +19,4 @@ mac:
   identity: "-" # ad-hoc signing: no Apple cert needed, but prevents macOS Sequoia from trashing the app
   target:
     - dmg
-    - zip
   artifactName: "browser-agent-${version}-${arch}.${ext}"
