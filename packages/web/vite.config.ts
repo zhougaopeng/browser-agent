@@ -35,7 +35,7 @@ function contentHash(distDir: string): string {
 function buildRelease(): Plugin {
   return {
     name: "build-release",
-    async closeBundle() {
+    async writeBundle() {
       const distDir = path.resolve(__dirname, "dist");
       const releaseDir = path.resolve(__dirname, "release");
       const short = contentHash(distDir);
