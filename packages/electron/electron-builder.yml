@@ -19,7 +19,7 @@ mac:
   identity: "-" # ad-hoc signing: no Apple cert needed, but prevents macOS Sequoia from trashing the app
   target:
     - dmg
-    - zip # electron-updater uses zip for in-place updates on macOS
+    - zip # needed for electron-updater to publish latest-mac.yml for update detection
   artifactName: "browser-agent-${version}-${arch}.${ext}"
 
 publish:

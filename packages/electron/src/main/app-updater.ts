@@ -1,21 +1,24 @@
-import { app, type BrowserWindow, Menu, type MenuItem } from "electron";
+import { app, type BrowserWindow, dialog, Menu, type MenuItem, shell } from "electron";
 import electronUpdater from "electron-updater";
 
 const { autoUpdater } = electronUpdater;
 type UpdateInfo = electronUpdater.UpdateInfo;
 
 const TAG = "[app-updater]";
+const RELEASE_URL = "https://github.com/zhougaopeng/browser-agent/releases";
 
 let mainWindow: BrowserWindow | null = null;
 let checkForUpdatesMenuItem: MenuItem | null = null;
+let isManualCheck = false;
 
 function send(channel: string, data?: unknown): void {
   mainWindow?.webContents.send(channel, data);
 }
 
-/**
- * Build the macOS application menu with a "Check for Updates..." item.
- */
+function openReleasePage(version: string): void {
+  shell.openExternal(`${RELEASE_URL}/tag/v${version}`);
+}
+
 function buildAppMenu(packaged: boolean): void {
   const appName = app.name || "Browser Agent";
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -27,8 +30,8 @@ function buildAppMenu(packaged: boolean): void {
         {
           label: "Check for Updates…",
           id: "check-for-updates",
-          enabled: packaged, // disabled in dev mode
-          click: () => checkForAppUpdate(),
+          enabled: packaged,
+          click: () => checkForAppUpdate(true),
         },
         { type: "separator" },
         { role: "services" },
@@ -51,14 +54,13 @@ function buildAppMenu(packaged: boolean): void {
 }
 
 /**
- * Initialise the auto-updater.
+ * Initialise the update checker.
  *
- * - In development (`!app.isPackaged`) the updater is skipped entirely to
- *   avoid `ERR_UPDATER_*` errors.
- * - After setup, an initial check is fired automatically.
+ * Without a proper Apple Developer certificate, electron-updater's
+ * quitAndInstall() fails macOS code-signature validation. Instead we only
+ * *check* for updates and guide the user to the GitHub Release page.
  */
 export function initAppUpdater(win: BrowserWindow): void {
-  // Always build the menu (so Edit/View/Window menus work in dev too).
   buildAppMenu(app.isPackaged);
 
   if (!app.isPackaged) {
@@ -68,9 +70,7 @@ export function initAppUpdater(win: BrowserWindow): void {
 
   mainWindow = win;
 
-  // Don't auto-download; let the user confirm first.
   autoUpdater.autoDownload = false;
-  // Don't auto-install on quit; we use explicit quitAndInstall().
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on("checking-for-update", () => {
@@ -88,8 +88,26 @@ export function initAppUpdater(win: BrowserWindow): void {
       version: info.version,
       releaseDate: info.releaseDate,
     });
-    // Start downloading automatically once we know there's an update.
-    autoUpdater.downloadUpdate();
+
+    if (checkForUpdatesMenuItem) {
+      checkForUpdatesMenuItem.label = `Download Update (v${info.version})…`;
+      checkForUpdatesMenuItem.enabled = true;
+      checkForUpdatesMenuItem.click = () => openReleasePage(info.version);
+    }
+
+    dialog
+      .showMessageBox({
+        type: "info",
+        title: "Update Available",
+        message: `A new version is available: v${info.version}`,
+        detail: 'Click "Download" to open the download page.',
+        buttons: ["Download", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) openReleasePage(info.version);
+      });
   });
 
   autoUpdater.on("update-not-available", (info: UpdateInfo) => {
@@ -99,55 +117,36 @@ export function initAppUpdater(win: BrowserWindow): void {
       checkForUpdatesMenuItem.label = "Check for Updates…";
       checkForUpdatesMenuItem.enabled = true;
     }
-  });
-
-  autoUpdater.on("download-progress", (progress) => {
-    send("app-update:download-progress", {
-      percent: progress.percent,
-      transferred: progress.transferred,
-      total: progress.total,
-    });
-  });
-
-  autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
-    console.log(`${TAG} Update downloaded: ${info.version}`);
-    send("app-update:downloaded", { version: info.version });
-    if (checkForUpdatesMenuItem) {
-      checkForUpdatesMenuItem.label = `Restart to Update (v${info.version})`;
-      checkForUpdatesMenuItem.enabled = true;
-      checkForUpdatesMenuItem.click = () => installAppUpdate();
+    if (isManualCheck) {
+      isManualCheck = false;
+      dialog.showMessageBox({
+        type: "info",
+        title: "No Updates Available",
+        message: "You're up to date!",
+        detail: `${app.name || "Browser Agent"} ${info.version} is currently the newest version available.`,
+        buttons: ["OK"],
+      });
     }
   });
 
   autoUpdater.on("error", (err: Error) => {
     console.error(`${TAG} Update error:`, err);
     send("app-update:error", { message: err.message });
+    isManualCheck = false;
     if (checkForUpdatesMenuItem) {
       checkForUpdatesMenuItem.label = "Check for Updates…";
       checkForUpdatesMenuItem.enabled = true;
     }
   });
 
-  // Initial check, delayed slightly to let the window finish loading.
   setTimeout(() => checkForAppUpdate(), 3_000);
 }
 
-/**
- * Manually trigger an update check.
- * Can be called from IPC (e.g. a "Check for Updates" menu item).
- */
-export function checkForAppUpdate(): void {
+export function checkForAppUpdate(manual = false): void {
   if (!app.isPackaged) {
     console.log(`${TAG} Skipping update check in dev mode`);
     return;
   }
+  isManualCheck = manual;
   autoUpdater.checkForUpdates();
-}
-
-/**
- * Quit and install the downloaded update.
- * Called when the user clicks "Restart to Update".
- */
-export function installAppUpdate(): void {
-  autoUpdater.quitAndInstall();
 }

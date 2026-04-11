@@ -152,3 +152,26 @@ Biome is the single tool for linting and formatting (no ESLint, no Prettier):
 - Husky pre-commit hook runs lint-staged (biome check + format on staged `*.{ts,tsx}` and format on `*.{json,css}`)
 - Root `tsconfig.json` uses project references to all three sub-packages
 - CSS: Tailwind v4 with cssModules + `@tailwindcss/vite` plugin
+
+## Release
+
+CI workflow (`.github/workflows/release.yml`) triggers on tag push:
+
+| Tag prefix | Behavior |
+|------------|----------|
+| `v*` (e.g. `v1.0.5`) | Full build and release: web zip + version.json + Electron app |
+| `w*` (e.g. `w1.0.5`) | Web only: build and release web zip + version.json |
+
+Manual `workflow_dispatch` is also available for selective publishing.
+
+### Tagging Rules
+
+When asked to create a release tag, determine the correct prefix automatically:
+
+1. Find the latest tag: `git describe --tags --abbrev=0 --match "v*" --match "w*"`
+2. Get changed files: `git diff --name-only <lastTag>..HEAD`
+3. Choose prefix:
+   - All changed files are under `packages/web/` → use `w` prefix (web-only release)
+   - Any file outside `packages/web/` is changed → use `v` prefix (full release)
+4. Present the result and chosen tag to the user for confirmation before executing
+5. If unable to determine (no previous tags, dirty working tree, ambiguous state), ask the user directly
