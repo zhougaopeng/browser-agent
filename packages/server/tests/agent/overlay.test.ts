@@ -1,11 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockExecute = vi.fn().mockResolvedValue(undefined);
-
-vi.mock("../../src/agent/browser-tools", () => ({
-  getBrowserTools: vi.fn(() => ({
+const mockSession = {
+  getRawTools: vi.fn(() => ({
     browser_evaluate: { execute: mockExecute },
   })),
+};
+const mockSessionManager = {
+  get: vi.fn(() => mockSession),
+};
+
+vi.mock("../../src/agent/browser-tools", () => ({
+  getSessionManager: vi.fn(() => mockSessionManager),
+}));
+
+vi.mock("../../src/agent/thread-context", () => ({
+  getCurrentThreadId: vi.fn(() => "test-thread-id"),
 }));
 
 import { OverlayController } from "../../src/agent/overlay";
@@ -15,6 +25,8 @@ describe("OverlayController", () => {
 
   beforeEach(() => {
     mockExecute.mockClear();
+    mockSession.getRawTools.mockClear();
+    mockSessionManager.get.mockClear();
     controller = new OverlayController();
   });
 

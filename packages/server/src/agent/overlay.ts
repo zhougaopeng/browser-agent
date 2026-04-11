@@ -1,4 +1,5 @@
-import { getBrowserTools } from "./browser-tools";
+import { getSessionManager } from "./browser-tools";
+import { getCurrentThreadId } from "./thread-context";
 
 export class OverlayController {
   async showAutomating(): Promise<void> {
@@ -32,7 +33,14 @@ export class OverlayController {
 
   private async evaluate(code: string): Promise<void> {
     try {
-      const tools = getBrowserTools();
+      const threadId = getCurrentThreadId();
+      const manager = getSessionManager();
+      if (!threadId || !manager) return;
+
+      const session = manager.get(threadId);
+      if (!session) return;
+
+      const tools = session.getRawTools();
       const evaluate = tools.browser_evaluate;
       if (!evaluate || !("execute" in evaluate) || !evaluate.execute) return;
       await (

@@ -88,6 +88,7 @@ export async function listMessages(app: AppInstance, params: ListMessagesParams)
 export async function deleteThread(app: AppInstance, threadId: string) {
   const memoryStore = await app.mastra.getStorage()?.getStore("memory");
   if (memoryStore) await memoryStore.deleteThread({ threadId });
+  await app.sessionManager.destroy(threadId);
 }
 
 export async function renameThread(app: AppInstance, threadId: string, title: string) {

@@ -1,10 +1,17 @@
 import type { Mastra } from "@mastra/core/mastra";
 import type Conf from "conf";
 import { createBrowserAgent } from "./agent/browser-agent";
-import { getBrowserTools, getMCPClient, initBrowserTools } from "./agent/browser-tools";
+import type { BrowserSessionManager } from "./agent/browser-session";
+import { getBrowserTools, getSessionManager, initBrowserTools } from "./agent/browser-tools";
 import { createMastra } from "./agent/mastra";
 import { overlayController } from "./agent/overlay";
 import { createTitleAgent } from "./agent/title-agent";
+import {
+  createRequestToolsTool,
+  splitTools,
+  ToolDisclosureProcessor,
+  ToolDisclosureState,
+} from "./agent/tool-disclosure";
 import { getDefaultConfig, type ServerConfig } from "./config";
 import { type AppPaths, createPaths, getResourceId } from "./paths";
 import { skillManager } from "./skills/manager";
@@ -27,7 +34,9 @@ export interface AppInstance {
   readonly paths: AppPaths;
   readonly skillManager: typeof skillManager;
   readonly overlayController: typeof overlayController;
+  readonly sessionManager: BrowserSessionManager;
   getResourceId: () => string;
+  resetToolDisclosure: (threadId: string) => void;
   cleanup: () => Promise<void>;
   rebuild: () => Promise<void>;
 }
@@ -40,6 +49,7 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
 
   let currentMastra!: Mastra;
   let lastBrowserConfigJSON = "";
+  const disclosureState = new ToolDisclosureState();
 
   async function rebuild() {
     const settings = settingsStore.store;
@@ -64,11 +74,21 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
       }
     }
 
+    const allBrowserTools = getBrowserTools();
+    const { nonCoreTools } = splitTools(allBrowserTools);
+    const requestToolsTool = createRequestToolsTool(disclosureState, nonCoreTools);
+    const processor = new ToolDisclosureProcessor(disclosureState);
+
     const modelId = `${settings.model.provider}/${settings.model.name}`;
     const titleModelId = settings.model.titleModelName
       ? `${settings.model.provider}/${settings.model.titleModelName}`
       : modelId;
-    const agent = createBrowserAgent(getBrowserTools(), modelId);
+    const agent = createBrowserAgent({
+      browserTools: allBrowserTools,
+      modelId,
+      requestToolsTool,
+      inputProcessors: [processor],
+    });
     const titleAgent = createTitleAgent(titleModelId);
     currentMastra = createMastra(agent, titleAgent, paths);
     console.log(`[server] Agent rebuilt with model: ${modelId}, titleModel: ${titleModelId}`);
@@ -80,13 +100,19 @@ export async function createApp(config?: Partial<ServerConfig>): Promise<AppInst
     get mastra() {
       return currentMastra;
     },
+    get sessionManager() {
+      const mgr = getSessionManager();
+      if (!mgr) throw new Error("BrowserSessionManager not initialized");
+      return mgr;
+    },
     settingsStore,
     paths,
     skillManager,
     overlayController,
     getResourceId: () => getResourceId(paths),
+    resetToolDisclosure: (threadId: string) => disclosureState.reset(threadId),
     cleanup: async () => {
-      await getMCPClient()?.disconnect();
+      await getSessionManager()?.destroyAll();
     },
     rebuild,
   };

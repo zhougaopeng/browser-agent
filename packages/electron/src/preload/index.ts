@@ -46,9 +46,7 @@ const api = {
     /** Quit and install the downloaded update. */
     install: () => ipcRenderer.invoke("app-update:install"),
     /** Subscribe to all update status events. Returns an unsubscribe function. */
-    onStatus: (
-      cb: (event: { type: string; data?: Record<string, unknown> }) => void,
-    ) => {
+    onStatus: (cb: (event: { type: string; data?: Record<string, unknown> }) => void) => {
       const channels = [
         "app-update:checking",
         "app-update:available",

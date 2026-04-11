@@ -11,13 +11,15 @@ class MockMCPClient {
 }
 
 vi.mock("@mastra/mcp", () => ({
-  MCPClient: vi.fn().mockImplementation(MockMCPClient),
+  // biome-ignore lint/suspicious/noExplicitAny: class constructor must masquerade as function for vi.fn()
+  MCPClient: vi.fn().mockImplementation(MockMCPClient as any),
 }));
 
 const mockPaths = {
   db: "/mock-userData/mastra.db",
   traces: "/mock-userData/traces",
   playwrightProfile: "/mock-userData/playwright-profile",
+  browserProfiles: "/mock-userData/browser-profiles",
   resourceId: "/mock-userData/resource-id",
 } as const;
 
@@ -46,7 +48,6 @@ describe("initBrowserTools", () => {
 
     expect(MCPClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "playwright-browser",
         servers: expect.objectContaining({
           playwright: expect.objectContaining({
             command: "npx",
@@ -126,7 +127,7 @@ describe("initBrowserTools", () => {
     expect(mcpArgs).toContain("/tmp/chrome-profile");
   });
 
-  it("uses default --user-data-dir from paths when not provided", async () => {
+  it("uses per-thread --user-data-dir from browserProfiles when not provided", async () => {
     const { initBrowserTools } = await getModule();
 
     await initBrowserTools(
@@ -140,7 +141,7 @@ describe("initBrowserTools", () => {
 
     expect(mcpArgs).toContain("--user-data-dir");
     const idx = mcpArgs.indexOf("--user-data-dir");
-    expect(mcpArgs[idx + 1]).toBe("/mock-userData/playwright-profile");
+    expect(mcpArgs[idx + 1]).toMatch(/browser-profiles/);
   });
 
   it("includes --executable-path when provided", async () => {
@@ -159,7 +160,7 @@ describe("initBrowserTools", () => {
     expect(mcpArgs).toContain("/usr/bin/firefox");
   });
 
-  it("calls listToolsets and returns the playwright toolset", async () => {
+  it("calls listToolsets and returns proxy tools for the playwright toolset", async () => {
     const { initBrowserTools } = await getModule();
 
     const tools = await initBrowserTools(
@@ -169,10 +170,10 @@ describe("initBrowserTools", () => {
     );
 
     expect(mockListToolsets).toHaveBeenCalled();
-    expect(tools).toEqual({ browser_navigate: {} });
+    expect(tools).toHaveProperty("browser_navigate");
   });
 
-  it("disconnects existing client before creating new one", async () => {
+  it("destroys template session after schema discovery", async () => {
     const { initBrowserTools } = await getModule();
 
     await initBrowserTools(
@@ -180,22 +181,11 @@ describe("initBrowserTools", () => {
       "/path/to/overlay-init.js",
       mockPaths,
     );
-    expect(mockDisconnect).not.toHaveBeenCalled();
 
-    await initBrowserTools(
-      { browser: "chrome", headless: true },
-      "/path/to/overlay-init.js",
-      mockPaths,
-    );
     expect(mockDisconnect).toHaveBeenCalledTimes(1);
   });
 
-  it("getMCPClient returns null before init", async () => {
-    const { getMCPClient } = await getModule();
-    expect(getMCPClient()).toBeNull();
-  });
-
-  it("getMCPClient returns client after init", async () => {
+  it("getMCPClient returns null without threadId", async () => {
     const { initBrowserTools, getMCPClient } = await getModule();
 
     await initBrowserTools(
@@ -204,7 +194,20 @@ describe("initBrowserTools", () => {
       mockPaths,
     );
 
-    expect(getMCPClient()).not.toBeNull();
-    expect(getMCPClient()).toHaveProperty("listToolsets");
+    expect(getMCPClient()).toBeNull();
+  });
+
+  it("getSessionManager returns manager after init", async () => {
+    const { initBrowserTools, getSessionManager } = await getModule();
+
+    expect(getSessionManager()).toBeNull();
+
+    await initBrowserTools(
+      { browser: "chrome", headless: false },
+      "/path/to/overlay-init.js",
+      mockPaths,
+    );
+
+    expect(getSessionManager()).not.toBeNull();
   });
 });

@@ -6,6 +6,7 @@ export function createPaths(dataDir: string) {
     db: join(dataDir, "mastra.db"),
     traces: join(dataDir, "traces"),
     playwrightProfile: join(dataDir, "playwright-profile"),
+    browserProfiles: join(dataDir, "browser-profiles"),
     resourceId: join(dataDir, "resource-id"),
   } as const;
 }

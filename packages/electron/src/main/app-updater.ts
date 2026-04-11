@@ -1,5 +1,6 @@
 import { app, type BrowserWindow, Menu, type MenuItem } from "electron";
 import electronUpdater from "electron-updater";
+
 const { autoUpdater } = electronUpdater;
 type UpdateInfo = electronUpdater.UpdateInfo;
 

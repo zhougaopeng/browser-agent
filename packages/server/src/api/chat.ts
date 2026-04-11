@@ -4,6 +4,7 @@ import { createUIMessageStreamResponse } from "ai";
 import { uuidv7 } from "uuidv7";
 import { resetLoopState } from "../agent/browser-tools";
 import { buildThinkingProviderOptions, detectThinkingSupport } from "../agent/thinking-utils";
+import { runWithThread } from "../agent/thread-context";
 import { AgentTracer } from "../agent/tracer";
 import type { AppInstance } from "../index";
 
@@ -34,7 +35,8 @@ export async function createChatStream(
 ): Promise<CreateChatStreamResult> {
   const threadId = params.id ?? uuidv7();
 
-  resetLoopState();
+  resetLoopState(threadId);
+  app.resetToolDisclosure(threadId);
 
   const catalog = app.skillManager.buildCatalog(await app.skillManager.scanAll());
   const agentInstance = app.mastra.getAgent("browserAgent");
@@ -49,7 +51,6 @@ export async function createChatStream(
   const budgetTokens = thinking?.budgetTokens ?? 8000;
   const providerHint = thinking?.providerHint ?? "auto";
 
-  // 根据 provider + modelName 自动判断思维链模式（providerHint 可覆盖自动检测）
   const { mode: thinkingMode, label: thinkingLabel } = detectThinkingSupport(provider, modelName);
   const providerOptions = buildThinkingProviderOptions(
     provider,
@@ -58,10 +59,6 @@ export async function createChatStream(
     providerHint,
   );
 
-  // sendReasoning：
-  //  - native 模式：模型自动输出推理，始终捕获
-  //  - 用户手动开启（configurable 或 hint 模式）：发送
-  //  - 其余情况：不发送（避免无意义的流量）
   const sendReasoning = thinkingMode === "native" || thinkingEnabled;
 
   console.log(
@@ -73,31 +70,35 @@ export async function createChatStream(
   const controller = new AbortController();
   activeControllers.set(threadId, controller);
 
-  const stream = await handleChatStream({
-    mastra: app.mastra,
-    agentId: "browserAgent",
-    version: "v6",
-    params,
-    sendReasoning,
-    defaultOptions: {
-      maxSteps: 50,
-      memory: {
-        thread: threadId,
-        resource: app.getResourceId(),
+  // Run the entire agent execution within a thread context so that proxy
+  // browser tools route to the correct per-thread BrowserSession.
+  const stream = await runWithThread(threadId, () =>
+    handleChatStream({
+      mastra: app.mastra,
+      agentId: "browserAgent",
+      version: "v6",
+      params,
+      sendReasoning,
+      defaultOptions: {
+        maxSteps: 50,
+        memory: {
+          thread: threadId,
+          resource: app.getResourceId(),
+        },
+        instructions: `${instructions}${catalog}`,
+        providerOptions,
+        abortSignal: controller.signal,
+        onStepFinish: (event: unknown) => {
+          t.onStepFinish(event as Parameters<AgentTracer["onStepFinish"]>[0]);
+          app.overlayController.handleStep(event);
+        },
+        onFinish: () => {
+          activeControllers.delete(threadId);
+          app.overlayController.hide();
+        },
       },
-      instructions: `${instructions}${catalog}`,
-      providerOptions,
-      abortSignal: controller.signal,
-      onStepFinish: (event: unknown) => {
-        t.onStepFinish(event as Parameters<AgentTracer["onStepFinish"]>[0]);
-        app.overlayController.handleStep(event);
-      },
-      onFinish: () => {
-        activeControllers.delete(threadId);
-        app.overlayController.hide();
-      },
-    },
-  });
+    }),
+  );
 
   return { stream, threadId };
 }
