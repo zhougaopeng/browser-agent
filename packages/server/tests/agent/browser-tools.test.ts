@@ -50,14 +50,17 @@ describe("initBrowserTools", () => {
       expect.objectContaining({
         servers: expect.objectContaining({
           playwright: expect.objectContaining({
-            command: "npx",
+            command: process.execPath,
             args: expect.arrayContaining([
-              "@playwright/mcp@latest",
+              expect.stringMatching(/@playwright[/\\]mcp[/\\]cli\.js$/),
               "--browser",
               "chrome",
               "--caps",
               "vision",
             ]),
+            env: expect.objectContaining({
+              ELECTRON_RUN_AS_NODE: "1",
+            }),
           }),
         }),
       }),

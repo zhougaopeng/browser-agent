@@ -1,11 +1,28 @@
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import type { ToolsInput } from "@mastra/core/agent";
 import { MCPClient } from "@mastra/mcp";
 import type { AppPaths } from "../paths";
 import type { BrowserConfig } from "../store/settings";
 import { LoopState } from "./loop-state";
 
+const require = createRequire(import.meta.url);
+
+// `@playwright/mcp` doesn't expose `cli.js` in its `exports` field, but
+// `package.json` is always exposed. Resolve the package root from there and
+// join the bin entry manually.
+const MCP_ENTRY = join(dirname(require.resolve("@playwright/mcp/package.json")), "cli.js");
+
 const BROWSER_CLOSED_RE = /target page, context or browser has been closed/i;
+
+const BROWSER_MISSING_RE =
+  /(executable doesn'?t exist|failed to launch|chromium distribution .* is not found|looks like .*chrome.* is not installed|no such file or directory.*chrome|browser_type\.launch.*spawn .* enoent)/i;
+
+const BROWSER_INSTALL_HINTS: Record<string, { name: string; url: string }> = {
+  chrome: { name: "Google Chrome", url: "https://www.google.com/chrome/" },
+  firefox: { name: "Mozilla Firefox", url: "https://www.mozilla.org/firefox/" },
+  webkit: { name: "WebKit (Safari Technology Preview)", url: "https://webkit.org/" },
+};
 
 function isBrowserClosedError(result: unknown): boolean {
   try {
@@ -13,6 +30,26 @@ function isBrowserClosedError(result: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+function isBrowserMissingError(result: unknown): boolean {
+  try {
+    return BROWSER_MISSING_RE.test(JSON.stringify(result));
+  } catch {
+    return false;
+  }
+}
+
+function buildBrowserMissingHint(browser: string): {
+  content: { type: "text"; text: string }[];
+  isError: true;
+} {
+  const hint = BROWSER_INSTALL_HINTS[browser] ?? BROWSER_INSTALL_HINTS.chrome;
+  const text =
+    `⛔ 检测到当前系统未安装 ${hint.name}（或可执行文件路径不正确），无法启动浏览器。\n\n` +
+    `请前往 ${hint.url} 下载并安装后重试。\n` +
+    `如果你已经安装了其它位置的 ${hint.name}，可在「设置 → 浏览器 → Executable Path」里手动指定可执行文件路径。`;
+  return { content: [{ type: "text", text }], isError: true };
 }
 
 const CODE_PARAM_KEY: Record<string, string> = {
@@ -54,8 +91,7 @@ function stripDraftSchemas(tools: ToolsInput): void {
 
 function buildMCPArgs(config: BrowserConfig, overlayScript: string, userDataDir: string): string[] {
   const args = [
-    "-y",
-    "@playwright/mcp@latest",
+    MCP_ENTRY,
     "--browser",
     config.browser || "chrome",
     "--caps",
@@ -101,8 +137,12 @@ export class BrowserSession {
       id: `playwright-${this.threadId}`,
       servers: {
         playwright: {
-          command: "npx",
+          command: process.execPath,
           args: buildMCPArgs(this.config, this.overlayScript, this.userDataDir),
+          env: {
+            ...(process.env as Record<string, string>),
+            ELECTRON_RUN_AS_NODE: "1",
+          },
         },
       },
     });
@@ -171,6 +211,14 @@ export class BrowserSession {
       const fresh = this.rawTools[toolName] as Record<string, unknown> | undefined;
       const freshExec = fresh?.execute as typeof exec | undefined;
       if (freshExec) result = await freshExec(sanitizedInput, ctx);
+    }
+
+    if (isBrowserMissingError(result)) {
+      const hint = buildBrowserMissingHint(this.config.browser || "chrome");
+      console.warn(
+        `[browser-session] Browser executable missing for ${this.threadId} (browser=${this.config.browser})`,
+      );
+      return hint;
     }
 
     return this.loopState.trackAndAnnotate(toolName, sanitizedInput, result);
